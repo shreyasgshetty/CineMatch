@@ -42,12 +42,33 @@ app.use(helmet({
 }));
 
 // ── CORS ──────────────────────────────────────────────────────
-// In development, allow any localhost port (Vite may pick 3000, 3001, 5173, etc.)
-const devOrigin = /^http:\/\/localhost:\d+$/;
+// Origin checker:
+//   dev  → any localhost port (Vite picks randomly)
+//   prod → *.vercel.app preview URLs + explicit CLIENT_URL
+const ALLOWED_ORIGINS = [
+  /^http:\/\/localhost:\d+$/,                 // local dev
+  /^https:\/\/.*\.vercel\.app$/,              // all Vercel preview & prod deployments
+];
+if (process.env.CLIENT_URL) {
+  ALLOWED_ORIGINS.push(process.env.CLIENT_URL); // exact custom domain if set
+}
+
 app.use(cors({
-  origin: process.env.NODE_ENV === 'production'
-    ? process.env.CLIENT_URL
-    : devOrigin,
+  origin: (origin, callback) => {
+    // Allow requests with no origin (curl, Postman, server-to-server)
+    if (!origin) return callback(null, true);
+
+    const allowed = ALLOWED_ORIGINS.some(rule =>
+      typeof rule === 'string' ? rule === origin : rule.test(origin)
+    );
+
+    if (allowed) {
+      callback(null, true);
+    } else {
+      console.warn(`CORS blocked: ${origin}`);
+      callback(new Error(`Origin ${origin} not allowed by CORS`));
+    }
+  },
   credentials: true,
 }));
 
