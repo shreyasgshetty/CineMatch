@@ -1,0 +1,57 @@
+# Dependencies
+node_modules/
+.pnp
+.pnp.js
+
+# Build output
+dist/
+build/
+.vite/
+
+# Environment files — NEVER commit these
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ML model files & cache
+ml-service/cache/
+ml-service/__pycache__/
+ml-service/*.pkl
+ml-service/*.joblib
+ml-service/app/__pycache__/
+ml-service/app/**/__pycache__/
+*.pyc
+*.pyo
+.Python
+venv/
+env/
+.env/
+
+# Data files
+data/raw/*.json
+data/processed/*.pkl
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE
+.vscode/settings.json
+.idea/
+*.swp
+*.swo
+
+# Testing
+coverage/
+.nyc_output
+
+# Misc
+*.pid
+*.seed
