@@ -131,7 +131,7 @@ const MediaSchema = new mongoose.Schema({
 
 // ── Indexes ────────────────────────────────────────────────────
 // These match the query patterns in the recommendation and search system
-MediaSchema.index({ tmdbId: 1 });                          // Unique lookup
+// Note: tmdbId index is already created by unique:true above — no need to repeat it.
 MediaSchema.index({ type: 1 });                            // Filter by movie/tv
 MediaSchema.index({ originalLanguage: 1 });                // Filter by language
 MediaSchema.index({ industry: 1 });                        // Filter by industry

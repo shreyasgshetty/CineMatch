@@ -42,10 +42,12 @@ app.use(helmet({
 }));
 
 // ── CORS ──────────────────────────────────────────────────────
+// In development, allow any localhost port (Vite may pick 3000, 3001, 5173, etc.)
+const devOrigin = /^http:\/\/localhost:\d+$/;
 app.use(cors({
   origin: process.env.NODE_ENV === 'production'
     ? process.env.CLIENT_URL
-    : ['http://localhost:3000', 'http://localhost:5173'],
+    : devOrigin,
   credentials: true,
 }));
 
