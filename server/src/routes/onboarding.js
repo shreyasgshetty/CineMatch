@@ -259,4 +259,102 @@ router.post('/directors', auth, async (req, res, next) => {
   }
 });
 
+// ── GET: Language Preview Posters ─────────────────────────────
+// Returns top 4 poster paths per language for the collage cards in Step 1
+router.get('/language-previews', auth, async (req, res, next) => {
+  try {
+    const LANGS = ['kn','te','ta','ml','hi','bn','mr','pa','en','ko','ja','zh','es','fr'];
+    const previews = {};
+    await Promise.all(LANGS.map(async (lang) => {
+      const movies = await Media
+        .find({ originalLanguage: lang, posterPath: { $ne: '' } })
+        .sort({ popularity: -1 })
+        .limit(4)
+        .select('posterPath title')
+        .lean();
+      previews[lang] = movies.map(m => m.posterPath);
+    }));
+    res.json({ previews });
+  } catch (error) { next(error); }
+});
+
+// ── GET: Curated Movie Suggestions ────────────────────────────
+// Step 3: returns popular movies from selected languages + genres
+router.get('/movie-suggestions', auth, async (req, res, next) => {
+  try {
+    const { languages = '', genres = '', limit = 30 } = req.query;
+    const query = { posterPath: { $ne: '' } };
+    const langArr = languages.split(',').filter(Boolean);
+    const genreArr = genres.split(',').filter(Boolean);
+    if (langArr.length) query.originalLanguage = { $in: langArr };
+    if (genreArr.length) query.genres = { $in: genreArr };
+
+    const media = await Media.find(query)
+      .sort({ popularity: -1, rating: -1 })
+      .limit(Number(limit))
+      .select('title type originalLanguage industry genres releaseYear rating popularity posterPath cast directors')
+      .lean();
+
+    res.json({ media });
+  } catch (error) { next(error); }
+});
+
+// ── GET: Contextual People Suggestions ────────────────────────
+// Steps 4 & 5: extracts cast/directors from rated movies, augments
+// with popular people from the user's selected languages
+router.get('/people-suggestions', auth, async (req, res, next) => {
+  try {
+    const { mediaIds = '', languages = '', role = 'all', limit = 40 } = req.query;
+    const people = new Map(); // tmdbId → person object
+
+    const addPerson = (p, movieTitle, popularity, personRole) => {
+      const key = String(p.tmdbId);
+      if (people.has(key)) {
+        const existing = people.get(key);
+        if (!existing.knownFor.includes(movieTitle)) existing.knownFor.push(movieTitle);
+        existing.score += popularity;
+      } else {
+        people.set(key, {
+          tmdbId: p.tmdbId, name: p.name,
+          profilePath: p.profilePath || '',
+          role: personRole,
+          knownFor: [movieTitle],
+          score: popularity,
+        });
+      }
+    };
+
+    // Extract from rated/watched movies
+    const idArr = mediaIds.split(',').filter(Boolean);
+    if (idArr.length) {
+      const medias = await Media.find({ _id: { $in: idArr } })
+        .select('cast directors title popularity').lean();
+      for (const m of medias) {
+        if (role !== 'actor')   m.directors.forEach(d => addPerson(d, m.title, m.popularity * 2, 'director'));
+        if (role !== 'director') m.cast.slice(0, 6).forEach(a => addPerson(a, m.title, m.popularity, 'actor'));
+      }
+    }
+
+    // Augment from popular language content if we have <15 people
+    if (people.size < 15) {
+      const langArr = languages.split(',').filter(Boolean);
+      const q = langArr.length ? { originalLanguage: { $in: langArr } } : {};
+      const popular = await Media.find(q).sort({ popularity: -1 }).limit(20)
+        .select('cast directors title popularity').lean();
+      for (const m of popular) {
+        if (role !== 'actor')   m.directors.forEach(d => addPerson(d, m.title, m.popularity, 'director'));
+        if (role !== 'director') m.cast.slice(0, 4).forEach(a => addPerson(a, m.title, m.popularity * 0.5, 'actor'));
+      }
+    }
+
+    const result = [...people.values()]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, Number(limit))
+      .map(p => ({ ...p, knownFor: [...new Set(p.knownFor)].slice(0, 3).join(', ') }));
+
+    res.json({ people: result });
+  } catch (error) { next(error); }
+});
+
 module.exports = router;
+

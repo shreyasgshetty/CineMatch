@@ -69,12 +69,16 @@ export const refApi = {
 
 // ── Onboarding Endpoints ─────────────────────────────────────
 export const onboardingApi = {
-  saveLanguages: (data) => api.post('/onboarding/languages', data),
-  saveRatings: (data) => api.post('/onboarding/ratings', data),
-  saveGenres: (data) => api.post('/onboarding/genres', data),
-  saveActors: (data) => api.post('/onboarding/actors', data),
-  saveDirectors: (data) => api.post('/onboarding/directors', data),
+  saveLanguages:        (data)   => api.post('/onboarding/languages', data),
+  saveRatings:          (data)   => api.post('/onboarding/ratings', data),
+  saveGenres:           (data)   => api.post('/onboarding/genres', data),
+  saveActors:           (data)   => api.post('/onboarding/actors', data),
+  saveDirectors:        (data)   => api.post('/onboarding/directors', data),
+  getLanguagePreviews:  ()       => api.get('/onboarding/language-previews'),
+  getMovieSuggestions:  (params) => api.get('/onboarding/movie-suggestions', { params }),
+  getPeopleSuggestions: (params) => api.get('/onboarding/people-suggestions', { params }),
 };
+
 
 // ── Recommendation Endpoints ─────────────────────────────────
 export const recommendationApi = {
