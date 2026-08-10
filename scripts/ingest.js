@@ -1,30 +1,24 @@
 /**
  * TMDB Data Ingestion Script
  * ============================================================
- * Usage: node scripts/ingest.js
+ * Usage (from repo root):  node scripts/ingest.js
+ * Usage (dry run):         node scripts/ingest.js --dry-run
  *
- * This script fetches movies and TV shows from TMDB and stores
- * them in MongoDB's `media` collection.
- *
- * What it does:
- * 1. Fetches popular/top-rated content for each configured language
- * 2. For each item, fetches full details + credits from TMDB
- * 3. Normalizes the data to our Media schema
- * 4. Precomputes `featureText` for TF-IDF vectorization
- * 5. Upserts into MongoDB (safe to run multiple times)
- *
- * TMDB API key is READ from .env — never hardcoded.
- * Run from the server/ directory: node ../scripts/ingest.js
- *
- * Rate limits: TMDB allows ~40 requests/10s. We throttle accordingly.
- *
- * Estimated time: 10-20 minutes for full ingestion (~2000 items)
- * Run with --dry-run to test without saving to DB.
- *
+ * All dependencies are resolved from server/node_modules automatically.
+ * No need to install anything at the root level.
  * ============================================================
  */
 
-require('dotenv').config({ path: `${__dirname}/../server/.env` });
+// ── Bootstrap: add server/node_modules to module resolution ──
+// This lets the script require dotenv/mongoose/node-fetch from
+// server/node_modules regardless of what CWD you run it from.
+const path = require('path');
+const serverModules = path.join(__dirname, '../server/node_modules');
+process.env.NODE_PATH = (process.env.NODE_PATH || '') + path.delimiter + serverModules;
+require('module').Module._initPaths();
+// ─────────────────────────────────────────────────────────────
+
+require('dotenv').config({ path: path.join(__dirname, '../server/.env') });
 const mongoose = require('mongoose');
 const fetch    = require('node-fetch');
 
@@ -165,14 +159,12 @@ const ingest = async () => {
     process.exit(1);
   }
 
+  // Load Media model using absolute path (works from any CWD)
+  const MediaModel = require(path.join(__dirname, '../server/src/models/Media'));
+
   if (!DRY_RUN) {
-    // Connect to MongoDB
-    const Media = require('./server/src/models/Media');
     await mongoose.connect(MONGO_URI);
     console.log('✅ Connected to MongoDB\n');
-
-    // Load Media model
-    var MediaModel = require('./server/src/models/Media');
   }
 
   let totalIngested = 0;
