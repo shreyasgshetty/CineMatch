@@ -3,18 +3,39 @@
  *
  * GET /api/media               → List media (paginated, filterable)
  * GET /api/media/search        → Full-text + filter search
+ * GET /api/media/people        → Search actors/directors (TMDB API + local fallback)
  * GET /api/media/:id           → Single media details
- *
- * Note: Media is seeded by the data ingestion script (scripts/ingest.js)
- * not created via API. These routes are read-only for the client.
  *
  * TMDB API key stays on the backend — the frontend never touches TMDB directly.
  */
 
-const express = require('express');
-const router  = express.Router();
-const auth    = require('../middleware/auth');
-const Media   = require('../models/Media');
+const express  = require('express');
+const router   = express.Router();
+const auth     = require('../middleware/auth');
+const Media    = require('../models/Media');
+const https    = require('https');
+
+// ── TMDB fetch helper (no extra deps needed — uses built-in https) ────────────
+const TMDB_BASE = process.env.TMDB_BASE_URL || 'https://api.themoviedb.org/3';
+const TMDB_KEY  = process.env.TMDB_API_KEY;
+
+function tmdbGet(path, params = {}) {
+  return new Promise((resolve, reject) => {
+    const url = new URL(`${TMDB_BASE}${path}`);
+    url.searchParams.set('api_key', TMDB_KEY);
+    for (const [k, v] of Object.entries(params)) {
+      url.searchParams.set(k, String(v));
+    }
+    https.get(url.toString(), { timeout: 8000 }, (res) => {
+      let data = '';
+      res.on('data', chunk => { data += chunk; });
+      res.on('end', () => {
+        try { resolve(JSON.parse(data)); }
+        catch (e) { reject(e); }
+      });
+    }).on('error', reject).on('timeout', () => reject(new Error('TMDB timeout')));
+  });
+}
 
 // ── List Media ────────────────────────────────────────────────
 router.get('/', auth, async (req, res, next) => {
@@ -111,8 +132,10 @@ router.get('/search', auth, async (req, res, next) => {
   }
 });
 
-// ── People Search — actors/directors from media collection ────
-// Must be before /:id to avoid conflict
+// ── People Search ─────────────────────────────────────────────
+// Primary source: TMDB /search/person API (full ~1M person database)
+// Fallback:       Local MongoDB aggregation over ingested cast/directors
+// Must be before /:id to avoid route conflict
 router.get('/people', auth, async (req, res, next) => {
   try {
     const { q = '', limit = 10, role } = req.query;
@@ -121,115 +144,102 @@ router.get('/people', auth, async (req, res, next) => {
       return res.json({ people: [] });
     }
 
+    // ── Primary: TMDB person search ────────────────────────────
+    if (TMDB_KEY) {
+      try {
+        const data = await tmdbGet('/search/person', { query: q.trim(), page: 1 });
+
+        const knownForDeptFilter = role === 'director'
+          ? 'Directing'
+          : role === 'actor'
+            ? 'Acting'
+            : null; // null = all
+
+        let results = (data.results || [])
+          .filter(p => !knownForDeptFilter || p.known_for_department === knownForDeptFilter)
+          .slice(0, Number(limit))
+          .map(p => ({
+            tmdbId: p.id,
+            name: p.name,
+            profilePath: p.profile_path || '',
+            role: p.known_for_department === 'Directing' ? 'director' : 'actor',
+            popularity: p.popularity,
+            knownFor: (p.known_for || [])
+              .slice(0, 3)
+              .map(m => m.title || m.name)
+              .filter(Boolean)
+              .join(', '),
+          }));
+
+        // Sort: prioritise people whose movies we've ingested (they'll have richer data)
+        const ingestedIds = await Media.distinct('cast.tmdbId', { 'cast.tmdbId': { $in: results.map(r => r.tmdbId) } });
+        const ingestedSet = new Set(ingestedIds);
+        results.sort((a, b) => {
+          const aLocal = ingestedSet.has(a.tmdbId) ? 1 : 0;
+          const bLocal = ingestedSet.has(b.tmdbId) ? 1 : 0;
+          return bLocal - aLocal || b.popularity - a.popularity;
+        });
+
+        return res.json({ people: results, source: 'tmdb' });
+      } catch (tmdbErr) {
+        // TMDB unavailable — fall through to local DB search
+        console.warn('TMDB people search failed, using local fallback:', tmdbErr.message);
+      }
+    }
+
+    // ── Fallback: Local MongoDB aggregation ────────────────────
     const searchRegex = new RegExp(q.trim(), 'i');
 
-    // Build pipeline: find media where cast or directors match the name
     const castPipeline = [
       { $match: { 'cast.name': searchRegex } },
       { $unwind: '$cast' },
       { $match: { 'cast.name': searchRegex } },
-      {
-        $group: {
+      { $group: {
           _id: '$cast.tmdbId',
           name: { $first: '$cast.name' },
           profilePath: { $first: '$cast.profilePath' },
-          knownForTitles: { $push: { title: '$title', popularity: '$popularity' } },
-          maxPopularity: { $max: '$popularity' },
-        },
-      },
-      { $sort: { maxPopularity: -1 } },
+          titles: { $push: '$title' },
+          maxPop: { $max: '$popularity' },
+      }},
+      { $sort: { maxPop: -1 } },
       { $limit: Number(limit) },
-      {
-        $project: {
-          tmdbId: '$_id',
-          name: 1,
-          profilePath: 1,
-          role: { $literal: 'actor' },
-          knownFor: {
-            $reduce: {
-              input: {
-                $slice: [
-                  { $sortArray: { input: '$knownForTitles', sortBy: { popularity: -1 } } },
-                  3,
-                ],
-              },
-              initialValue: '',
-              in: {
-                $cond: [
-                  { $eq: ['$$value', ''] },
-                  '$$this.title',
-                  { $concat: ['$$value', ', ', '$$this.title'] },
-                ],
-              },
-            },
-          },
-        },
-      },
+      { $project: { tmdbId: '$_id', name: 1, profilePath: 1, role: { $literal: 'actor' },
+          knownFor: { $reduce: { input: { $slice: ['$titles', 3] }, initialValue: '',
+            in: { $cond: [{ $eq: ['$$value', ''] }, '$$this', { $concat: ['$$value', ', ', '$$this'] }] } } } } },
     ];
 
     const directorPipeline = [
       { $match: { 'directors.name': searchRegex } },
       { $unwind: '$directors' },
       { $match: { 'directors.name': searchRegex } },
-      {
-        $group: {
+      { $group: {
           _id: '$directors.tmdbId',
           name: { $first: '$directors.name' },
           profilePath: { $first: '$directors.profilePath' },
-          knownForTitles: { $push: { title: '$title', popularity: '$popularity' } },
-          maxPopularity: { $max: '$popularity' },
-        },
-      },
-      { $sort: { maxPopularity: -1 } },
+          titles: { $push: '$title' },
+          maxPop: { $max: '$popularity' },
+      }},
+      { $sort: { maxPop: -1 } },
       { $limit: Number(limit) },
-      {
-        $project: {
-          tmdbId: '$_id',
-          name: 1,
-          profilePath: 1,
-          role: { $literal: 'director' },
-          knownFor: {
-            $reduce: {
-              input: {
-                $slice: [
-                  { $sortArray: { input: '$knownForTitles', sortBy: { popularity: -1 } } },
-                  3,
-                ],
-              },
-              initialValue: '',
-              in: {
-                $cond: [
-                  { $eq: ['$$value', ''] },
-                  '$$this.title',
-                  { $concat: ['$$value', ', ', '$$this.title'] },
-                ],
-              },
-            },
-          },
-        },
-      },
+      { $project: { tmdbId: '$_id', name: 1, profilePath: 1, role: { $literal: 'director' },
+          knownFor: { $reduce: { input: { $slice: ['$titles', 3] }, initialValue: '',
+            in: { $cond: [{ $eq: ['$$value', ''] }, '$$this', { $concat: ['$$value', ', ', '$$this'] }] } } } } },
     ];
 
     let people = [];
-
     if (role === 'director') {
       people = await Media.aggregate(directorPipeline);
     } else if (role === 'actor') {
       people = await Media.aggregate(castPipeline);
     } else {
-      // Search both and merge (for general people search)
-      const [actors, directors] = await Promise.all([
-        Media.aggregate(castPipeline),
-        Media.aggregate(directorPipeline),
-      ]);
-      // Deduplicate by tmdbId — director takes priority if same person
+      const [actors, directors] = await Promise.all([Media.aggregate(castPipeline), Media.aggregate(directorPipeline)]);
       const seen = new Set();
       for (const d of directors) { seen.add(d.tmdbId); people.push(d); }
       for (const a of actors)    { if (!seen.has(a.tmdbId)) people.push(a); }
       people = people.slice(0, Number(limit));
     }
 
-    res.json({ people });
+    res.json({ people, source: 'local' });
   } catch (error) {
     next(error);
   }

@@ -27,8 +27,8 @@ const TMDB_BASE      = 'https://api.themoviedb.org/3';
 const TMDB_KEY       = process.env.TMDB_API_KEY;
 const MONGO_URI      = process.env.MONGODB_URI;
 const DRY_RUN        = process.argv.includes('--dry-run');
-const PAGES_PER_LANG = 5; // 5 pages × 20 results = 100 items per language
-const DELAY_MS       = 260; // ~3.8 req/s — well under TMDB's 40/10s limit
+const PAGES_PER_LANG = 10; // 10 pages × 20 results = 200 items per language (~4400 total)
+const DELAY_MS       = 300; // ~3.3 req/s — comfortably under TMDB's 40/10s limit
 
 // Language → industry mapping
 const LANGUAGE_TO_INDUSTRY = {
@@ -39,8 +39,8 @@ const LANGUAGE_TO_INDUSTRY = {
   zh: 'Chinese Cinema', es: 'Spanish Cinema', fr: 'French Cinema',
 };
 
-// Languages to ingest — add/remove as needed
-const INGEST_LANGUAGES = ['kn', 'te', 'ta', 'ml', 'hi', 'en', 'ko'];
+// Languages to ingest — all supported languages
+const INGEST_LANGUAGES = ['kn', 'te', 'ta', 'ml', 'hi', 'bn', 'mr', 'pa', 'en', 'ko', 'ja'];
 
 // TMDB genre ID → name map
 const TMDB_GENRE_MAP = {
