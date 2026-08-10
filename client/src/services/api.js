@@ -75,8 +75,10 @@ export const onboardingApi = {
   saveActors:           (data)   => api.post('/onboarding/actors', data),
   saveDirectors:        (data)   => api.post('/onboarding/directors', data),
   getLanguagePreviews:  ()       => api.get('/onboarding/language-previews'),
+  getGenrePreviews:     (params) => api.get('/onboarding/genre-previews', { params }),
   getMovieSuggestions:  (params) => api.get('/onboarding/movie-suggestions', { params }),
   getPeopleSuggestions: (params) => api.get('/onboarding/people-suggestions', { params }),
+
 };
 
 

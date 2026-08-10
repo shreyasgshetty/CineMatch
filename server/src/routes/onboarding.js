@@ -278,26 +278,76 @@ router.get('/language-previews', auth, async (req, res, next) => {
   } catch (error) { next(error); }
 });
 
-// ── GET: Curated Movie Suggestions ────────────────────────────
-// Step 3: returns popular movies from selected languages + genres
+// ── GET: Genre Preview Posters ─────────────────────────────
+// Returns top 4 poster paths per genre for the collage cards in Step 2
+router.get('/genre-previews', auth, async (req, res, next) => {
+  try {
+    const { languages = '' } = req.query;
+    const langArr = languages.split(',').filter(Boolean);
+    const GENRES = ['Action','Adventure','Animation','Comedy','Crime',
+      'Documentary','Drama','Family','Fantasy','History','Horror',
+      'Music','Mystery','Romance','Sci-Fi','Thriller','War','Western'];
+    const previews = {};
+    const langFilter = langArr.length ? { originalLanguage: { $in: langArr } } : {};
+    await Promise.all(GENRES.map(async (genre) => {
+      // Try with language filter first, fall back to global if too few
+      let movies = await Media
+        .find({ ...langFilter, genres: genre, posterPath: { $ne: '' } })
+        .sort({ popularity: -1 }).limit(4).select('posterPath').lean();
+      if (movies.length < 2) {
+        movies = await Media
+          .find({ genres: genre, posterPath: { $ne: '' } })
+          .sort({ popularity: -1 }).limit(4).select('posterPath').lean();
+      }
+      previews[genre] = movies.map(m => m.posterPath);
+    }));
+    res.json({ previews });
+  } catch (error) { next(error); }
+});
+
+// ── GET: Curated Movie Suggestions ─────────────────────────
+// Step 3: returns movies distributed evenly across each selected language
+// so user always sees films from their chosen industries, not just globally popular ones
 router.get('/movie-suggestions', auth, async (req, res, next) => {
   try {
-    const { languages = '', genres = '', limit = 30 } = req.query;
-    const query = { posterPath: { $ne: '' } };
-    const langArr = languages.split(',').filter(Boolean);
+    const { languages = '', genres = '', limit = 36 } = req.query;
+    const langArr  = languages.split(',').filter(Boolean);
     const genreArr = genres.split(',').filter(Boolean);
-    if (langArr.length) query.originalLanguage = { $in: langArr };
-    if (genreArr.length) query.genres = { $in: genreArr };
+    const N = Number(limit);
 
-    const media = await Media.find(query)
-      .sort({ popularity: -1, rating: -1 })
-      .limit(Number(limit))
-      .select('title type originalLanguage industry genres releaseYear rating popularity posterPath cast directors')
-      .lean();
+    const baseQuery = { posterPath: { $ne: '' } };
+    if (genreArr.length) baseQuery.genres = { $in: genreArr };
+
+    const fields = 'title type originalLanguage industry genres releaseYear rating popularity posterPath';
+    let media = [];
+
+    if (langArr.length > 1) {
+      // Fetch per-language then interleave, so every selected language is represented
+      const perLang = Math.ceil(N / langArr.length);
+      const buckets = await Promise.all(
+        langArr.map(lang =>
+          Media.find({ ...baseQuery, originalLanguage: lang })
+            .sort({ popularity: -1 }).limit(perLang).select(fields).lean()
+        )
+      );
+      // Round-robin interleave
+      const maxLen = Math.max(...buckets.map(b => b.length));
+      for (let i = 0; i < maxLen; i++) {
+        for (const bucket of buckets) {
+          if (bucket[i]) media.push(bucket[i]);
+        }
+      }
+      media = media.slice(0, N);
+    } else {
+      const q = langArr.length ? { ...baseQuery, originalLanguage: langArr[0] } : baseQuery;
+      media = await Media.find(q)
+        .sort({ popularity: -1 }).limit(N).select(fields).lean();
+    }
 
     res.json({ media });
   } catch (error) { next(error); }
 });
+
 
 // ── GET: Contextual People Suggestions ────────────────────────
 // Steps 4 & 5: extracts cast/directors from rated movies, augments
