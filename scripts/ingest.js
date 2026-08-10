@@ -110,11 +110,11 @@ const normalizeMedia = (item, type, credits, keywords) => {
 
   const cast = (credits?.cast || [])
     .slice(0, 10)
-    .map(c => ({ tmdbId: c.id, name: c.name, character: c.character || '' }));
+    .map(c => ({ tmdbId: c.id, name: c.name, character: c.character || '', profilePath: c.profile_path || '' }));
 
   const directors = (credits?.crew || [])
     .filter(c => c.job === 'Director')
-    .map(d => ({ tmdbId: d.id, name: d.name }));
+    .map(d => ({ tmdbId: d.id, name: d.name, profilePath: d.profile_path || '' }));
 
   const rawKeywords = keywords?.keywords || keywords?.results || [];
   const kwList = rawKeywords.map(k => k.name).filter(Boolean);

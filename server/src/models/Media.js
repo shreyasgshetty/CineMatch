@@ -19,15 +19,17 @@ const mongoose = require('mongoose');
 
 // ── Cast Member Sub-Schema ─────────────────────────────────────
 const CastSchema = new mongoose.Schema({
-  tmdbId:    { type: Number, required: true },
-  name:      { type: String, required: true },
-  character: { type: String, default: '' },
+  tmdbId:      { type: Number, required: true },
+  name:        { type: String, required: true },
+  character:   { type: String, default: '' },
+  profilePath: { type: String, default: '' }, // TMDB profile image path
 }, { _id: false });
 
 // ── Director Sub-Schema ────────────────────────────────────────
 const DirectorSchema = new mongoose.Schema({
-  tmdbId: { type: Number, required: true },
-  name:   { type: String, required: true },
+  tmdbId:      { type: Number, required: true },
+  name:        { type: String, required: true },
+  profilePath: { type: String, default: '' }, // TMDB profile image path
 }, { _id: false });
 
 // ── Media Schema ───────────────────────────────────────────────

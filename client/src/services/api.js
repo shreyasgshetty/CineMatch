@@ -56,7 +56,9 @@ export const mediaApi = {
   list: (params) => api.get('/media', { params }),
   getById: (id) => api.get(`/media/${id}`),
   search: (params) => api.get('/media/search', { params }),
+  searchPeople: (params) => api.get('/media/people', { params }),
 };
+
 
 // ── Reference Data ───────────────────────────────────────────
 export const refApi = {
