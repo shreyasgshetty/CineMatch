@@ -6,37 +6,64 @@ import OnboardingLayout from '../../components/onboarding/OnboardingLayout';
 
 const TMDB_IMG = 'https://image.tmdb.org/t/p/w154';
 
-// Fallback gradient per language if DB has no posters yet
+// Rich warm gradient per language — used when no posters available
 const LANG_GRADIENT = {
-  kn: 'linear-gradient(135deg,#7c2d12,#c2410c)',
-  te: 'linear-gradient(135deg,#064e3b,#065f46)',
-  ta: 'linear-gradient(135deg,#1e3a5f,#1e40af)',
-  ml: 'linear-gradient(135deg,#14532d,#166534)',
-  hi: 'linear-gradient(135deg,#831843,#9d174d)',
-  bn: 'linear-gradient(135deg,#3b0764,#6b21a8)',
-  mr: 'linear-gradient(135deg,#713f12,#92400e)',
-  pa: 'linear-gradient(135deg,#78350f,#d97706)',
-  en: 'linear-gradient(135deg,#1e293b,#334155)',
-  ko: 'linear-gradient(135deg,#7f1d1d,#991b1b)',
-  ja: 'linear-gradient(135deg,#831843,#be185d)',
-  zh: 'linear-gradient(135deg,#7f1d1d,#b91c1c)',
-  es: 'linear-gradient(135deg,#713f12,#b45309)',
-  fr: 'linear-gradient(135deg,#1e3a5f,#1d4ed8)',
+  kn: 'linear-gradient(145deg,#2a0a0a 0%,#6b1c1c 50%,#a0341a 100%)',
+  te: 'linear-gradient(145deg,#062818 0%,#0f5236 50%,#1a7a52 100%)',
+  ta: 'linear-gradient(145deg,#0a1a3a 0%,#1a3a70 50%,#1e50a0 100%)',
+  ml: 'linear-gradient(145deg,#062212 0%,#125230 50%,#1a7044 100%)',
+  hi: 'linear-gradient(145deg,#2e0828 0%,#6b1260 50%,#9a1a7a 100%)',
+  bn: 'linear-gradient(145deg,#18062a 0%,#421880 50%,#6228a8 100%)',
+  mr: 'linear-gradient(145deg,#2a1000 0%,#6e2e00 50%,#a04a00 100%)',
+  pa: 'linear-gradient(145deg,#2a1a00 0%,#7a4800 50%,#c07000 100%)',
+  en: 'linear-gradient(145deg,#080e18 0%,#142030 50%,#1e3248 100%)',
+  ko: 'linear-gradient(145deg,#280808 0%,#681010 50%,#9a1818 100%)',
+  ja: 'linear-gradient(145deg,#280a1a 0%,#6a1040 50%,#9e1860 100%)',
+  zh: 'linear-gradient(145deg,#280808 0%,#701010 50%,#a81a1a 100%)',
+  es: 'linear-gradient(145deg,#221000 0%,#6a2e00 50%,#a04800 100%)',
+  fr: 'linear-gradient(145deg,#080e28 0%,#122070 50%,#1a30a8 100%)',
 };
 
-function PosterCollage({ posters, gradient }) {
+// Decorative pattern overlay for cards with no posters
+const LANG_PATTERN_COLOR = {
+  kn: 'rgba(160,52,26,0.5)',  te: 'rgba(26,122,82,0.5)',
+  ta: 'rgba(30,80,160,0.5)',  ml: 'rgba(26,112,68,0.5)',
+  hi: 'rgba(154,26,122,0.5)', bn: 'rgba(98,40,168,0.5)',
+  mr: 'rgba(160,74,0,0.5)',   pa: 'rgba(192,112,0,0.5)',
+  en: 'rgba(30,50,72,0.5)',   ko: 'rgba(154,24,24,0.5)',
+  ja: 'rgba(158,24,96,0.5)',  zh: 'rgba(168,26,26,0.5)',
+  es: 'rgba(160,72,0,0.5)',   fr: 'rgba(26,48,168,0.5)',
+};
+
+function PosterCollage({ posters, gradient, patternColor }) {
   if (!posters || posters.length === 0) {
-    return <div style={{ position: 'absolute', inset: 0, background: gradient }} />;
+    // No posters — show a rich decorative placeholder
+    return (
+      <div style={{ position: 'absolute', inset: 0, background: gradient }}>
+        {/* Decorative grid pattern */}
+        <div style={{
+          position: 'absolute', inset: 0,
+          backgroundImage: `linear-gradient(${patternColor} 1px, transparent 1px), linear-gradient(90deg, ${patternColor} 1px, transparent 1px)`,
+          backgroundSize: '24px 24px',
+          opacity: 0.3,
+        }} />
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse at 30% 70%, rgba(255,255,255,0.06) 0%, transparent 60%)',
+        }} />
+      </div>
+    );
   }
   const slots = [...posters, ...posters].slice(0, 4);
   return (
     <div style={{ position: 'absolute', inset: 0, display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 2, overflow: 'hidden' }}>
       {slots.map((path, i) => (
-        <div key={i} style={{ overflow: 'hidden', background: '#111' }}>
+        <div key={i} style={{ overflow: 'hidden', background: '#111', position: 'relative' }}>
           <img
             src={`${TMDB_IMG}${path}`}
             alt=""
-            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.85 }}
+            style={{ width: '100%', height: '100%', objectFit: 'cover', opacity: 0.88 }}
+            onError={e => { e.target.style.display = 'none'; }}
           />
         </div>
       ))}
@@ -45,35 +72,93 @@ function PosterCollage({ posters, gradient }) {
 }
 
 function LanguageCard({ lang, isSelected, onToggle, posters }) {
+  const [hovered, setHovered] = useState(false);
+  const hasPosters = posters && posters.length > 0;
+
   return (
     <button
       id={`lang-${lang.code}`}
       type="button"
       onClick={() => onToggle(lang.code)}
-      style={{ position: 'relative', aspectRatio: '3/4', minHeight: 180, width: '100%', border: 'none', padding: 0, cursor: 'pointer', borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: 'none' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'relative', aspectRatio: '3/4', minHeight: 170, width: '100%',
+        border: 'none', padding: 0, cursor: 'pointer',
+        borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: 'none',
+        outline: isSelected ? '2.5px solid var(--gold)' : '2.5px solid transparent',
+        outlineOffset: isSelected ? '0px' : '0px',
+        transition: 'outline-color var(--t-base), transform var(--t-base), box-shadow var(--t-base)',
+        transform: hovered && !isSelected ? 'translateY(-3px)' : isSelected ? 'translateY(-2px)' : 'none',
+        boxShadow: isSelected
+          ? '0 0 0 2.5px var(--gold), 0 8px 32px rgba(212,168,67,0.35), 0 0 24px rgba(212,168,67,0.2) inset'
+          : hovered ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
+      }}
     >
-      {/* Poster collage or gradient */}
-      <PosterCollage posters={posters} gradient={LANG_GRADIENT[lang.code] || LANG_GRADIENT.en} />
+      {/* Poster collage or decorative gradient */}
+      <PosterCollage
+        posters={posters}
+        gradient={LANG_GRADIENT[lang.code] || LANG_GRADIENT.en}
+        patternColor={LANG_PATTERN_COLOR[lang.code] || 'rgba(255,255,255,0.2)'}
+      />
 
-      {/* Dark overlay — stronger at bottom */}
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.88) 40%, rgba(0,0,0,0.18) 100%)', transition: 'opacity 0.2s' }} />
+      {/* Dark overlay — bottom weighted */}
+      <div style={{
+        position: 'absolute', inset: 0,
+        background: hasPosters
+          ? 'linear-gradient(to top, rgba(0,0,0,0.92) 38%, rgba(0,0,0,0.15) 100%)'
+          : 'linear-gradient(to top, rgba(0,0,0,0.80) 30%, rgba(0,0,0,0.05) 100%)',
+        transition: 'opacity var(--t-base)',
+      }} />
 
-      {/* Gold selection tint */}
+      {/* Hover shimmer */}
+      {hovered && !isSelected && (
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'linear-gradient(135deg, rgba(255,255,255,0.04) 0%, transparent 60%)',
+        }} />
+      )}
+
+      {/* Selected tint */}
       {isSelected && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(201,168,76,0.22)', border: '3px solid var(--gold)', borderRadius: 'var(--radius-lg)', boxShadow: '0 0 28px rgba(201,168,76,0.4) inset, 0 0 24px rgba(201,168,76,0.3)' }} />
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'rgba(212,168,67,0.10)',
+        }} />
       )}
 
       {/* Checkmark badge */}
       {isSelected && (
-        <div style={{ position: 'absolute', top: 10, right: 10, width: 26, height: 26, borderRadius: '50%', background: 'var(--gradient-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', fontWeight: 900, color: '#0a0805', boxShadow: '0 0 10px rgba(201,168,76,0.6)' }}>✓</div>
+        <div style={{
+          position: 'absolute', top: 9, right: 9,
+          width: 24, height: 24, borderRadius: '50%',
+          background: 'var(--gradient-gold)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 0 12px rgba(212,168,67,0.6)',
+        }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0d0a02" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
       )}
 
       {/* Text */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '10px 12px' }}>
-        <div style={{ fontWeight: 800, fontSize: '0.95rem', color: isSelected ? 'var(--gold)' : '#fff', letterSpacing: '-0.01em', textShadow: '0 1px 4px rgba(0,0,0,0.8)', marginBottom: 2 }}>
+        <div style={{
+          fontWeight: 800, fontSize: '0.92rem',
+          color: isSelected ? 'var(--gold)' : '#fff',
+          letterSpacing: '-0.01em', textShadow: '0 1px 6px rgba(0,0,0,0.9)',
+          marginBottom: 2, transition: 'color var(--t-fast)',
+        }}>
           {lang.label}
         </div>
-        <div style={{ fontSize: '0.65rem', color: isSelected ? 'rgba(201,168,76,0.85)' : 'rgba(255,255,255,0.6)', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', textShadow: '0 1px 3px rgba(0,0,0,0.8)' }}>
+        <div style={{
+          fontSize: '0.62rem',
+          color: isSelected ? 'rgba(212,168,67,0.8)' : 'rgba(255,255,255,0.55)',
+          fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase',
+          textShadow: '0 1px 4px rgba(0,0,0,0.9)',
+          transition: 'color var(--t-fast)',
+        }}>
           {lang.industry}
         </div>
       </div>
@@ -122,34 +207,44 @@ export default function OnboardingLanguages() {
       onNext={handleNext}
       isLoading={isLoading}
       canProceed={selected.length > 0}
-      nextLabel={selected.length > 0 ? `Continue with ${selected.length} language${selected.length > 1 ? 's' : ''} →` : 'Select a language'}
+      nextLabel={selected.length > 0 ? `Continue with ${selected.length} language${selected.length > 1 ? 's' : ''}` : 'Select a language'}
     >
       {error && (
-        <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)', marginBottom: 'var(--space-5)', color: '#FCA5A5', fontSize: '0.85rem', display: 'flex', alignItems: 'center', gap: 8 }}>
-          <span>⚠️</span> {error}
+        <div className="info-banner info-banner--error" style={{ marginBottom: 'var(--space-5)' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {error}
         </div>
       )}
 
       {selected.length > 0 && (
-        <div style={{ padding: 'var(--space-2) var(--space-4)', background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.18)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-5)', fontSize: '0.8rem', color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700 }}>✓ Selected:</span>
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: 6,
+          marginBottom: 'var(--space-5)',
+          padding: 'var(--space-3) var(--space-4)',
+          background: 'rgba(212,168,67,0.05)',
+          border: '1px solid rgba(212,168,67,0.15)',
+          borderRadius: 'var(--radius-md)',
+        }}>
+          <span style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--gold)', marginRight: 4 }}>Selected:</span>
           {selected.map(code => {
             const l = LANGUAGES.find(x => x.code === code);
-            return <span key={code} style={{ padding: '2px 10px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.25)', borderRadius: 'var(--radius-full)', fontSize: '0.75rem', fontWeight: 600 }}>{l?.label}</span>;
+            return (
+              <span key={code} className="chip">{l?.label}</span>
+            );
           })}
         </div>
       )}
 
       {/* Indian Cinema */}
-      <SectionHeader title="🇮🇳 Indian Cinema" sub="Sandalwood · Tollywood · Kollywood · Bollywood and more" />
+      <CinematicDivider label="Indian Cinema" sub="Sandalwood · Tollywood · Kollywood · Bollywood and more" />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 'var(--space-3)', marginBottom: 'var(--space-8)' }}>
         {indian.map(lang => (
           <LanguageCard key={lang.code} lang={lang} isSelected={selected.includes(lang.code)} onToggle={toggle} posters={previews[lang.code] || []} />
         ))}
       </div>
 
-      {/* International */}
-      <SectionHeader title="🌍 International Cinema" sub="Hollywood · Korean · Japanese and beyond" />
+      {/* International Cinema */}
+      <CinematicDivider label="International Cinema" sub="Hollywood · Korean · Japanese and beyond" />
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill,minmax(140px,1fr))', gap: 'var(--space-3)' }}>
         {intl.map(lang => (
           <LanguageCard key={lang.code} lang={lang} isSelected={selected.includes(lang.code)} onToggle={toggle} posters={previews[lang.code] || []} />
@@ -159,15 +254,15 @@ export default function OnboardingLanguages() {
   );
 }
 
-function SectionHeader({ title, sub }) {
+function CinematicDivider({ label, sub }) {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', marginBottom: 'var(--space-4)' }}>
-      <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg,var(--gold),transparent)', opacity: 0.3 }} />
-      <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>{title}</div>
-        <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)', marginBottom: 'var(--space-4)' }}>
+      <div style={{ flex: 1, height: 1, background: 'linear-gradient(90deg,rgba(212,168,67,0.4),transparent)' }} />
+      <div style={{ textAlign: 'center', flexShrink: 0 }}>
+        <div style={{ fontSize: '0.67rem', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--gold)' }}>{label}</div>
+        <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginTop: 2 }}>{sub}</div>
       </div>
-      <div style={{ flex: 1, height: 1, background: 'linear-gradient(270deg,var(--gold),transparent)', opacity: 0.3 }} />
+      <div style={{ flex: 1, height: 1, background: 'linear-gradient(270deg,rgba(212,168,67,0.4),transparent)' }} />
     </div>
   );
 }

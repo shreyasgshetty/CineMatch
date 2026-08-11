@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import Spinner from '../ui/Spinner';
 
 const STEPS = [
-  { num: 1, label: 'Languages', emoji: '🌐' },
-  { num: 2, label: 'Rate Films', emoji: '⭐' },
-  { num: 3, label: 'Genres',    emoji: '🎭' },
-  { num: 4, label: 'Actors',    emoji: '🎭' },
-  { num: 5, label: 'Directors', emoji: '🎬' },
+  { num: 1, label: 'Languages' },
+  { num: 2, label: 'Genres'    },
+  { num: 3, label: 'Films'     },
+  { num: 4, label: 'Actors'    },
+  { num: 5, label: 'Directors' },
 ];
 
 export default function OnboardingLayout({
@@ -20,77 +20,98 @@ export default function OnboardingLayout({
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-void)', display: 'flex', flexDirection: 'column' }}>
 
-      {/* ── Ambient background ──────────────────────────────── */}
+      {/* Ambient gradient background */}
       <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-        <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '50%', height: '50%', background: 'radial-gradient(ellipse, rgba(140,28,42,0.18) 0%, transparent 65%)', filter: 'blur(60px)' }} />
-        <div style={{ position: 'absolute', bottom: '-15%', right: '-10%', width: '55%', height: '55%', background: 'radial-gradient(ellipse, rgba(201,168,76,0.12) 0%, transparent 65%)', filter: 'blur(70px)' }} />
+        <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '50%', height: '50%', background: 'radial-gradient(ellipse, rgba(122,24,37,0.14) 0%, transparent 65%)', filter: 'blur(60px)' }} />
+        <div style={{ position: 'absolute', bottom: '-15%', right: '-10%', width: '55%', height: '55%', background: 'radial-gradient(ellipse, rgba(212,168,67,0.09) 0%, transparent 65%)', filter: 'blur(70px)' }} />
+        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '60%', height: '60%', background: 'radial-gradient(ellipse, rgba(58,68,96,0.08) 0%, transparent 65%)', filter: 'blur(80px)' }} />
       </div>
 
-      {/* ── Sticky Header ───────────────────────────────────── */}
+      {/* Sticky Header */}
       <header style={{
         position: 'sticky', top: 0, zIndex: 'var(--z-nav)',
-        background: 'rgba(5,8,15,0.92)', backdropFilter: 'blur(20px)',
+        background: 'rgba(13,15,20,0.92)', backdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--border-subtle)',
       }}>
-        {/* Gold progress line */}
+        {/* Progress line */}
         <div className="progress-bar" style={{ borderRadius: 0 }}>
           <div className="progress-bar__fill" style={{ width: `${progress}%` }} />
         </div>
 
-        <div className="container" style={{ padding: 'var(--space-4) var(--space-6)' }}>
+        <div className="container" style={{ padding: 'var(--space-3) var(--space-6)' }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--space-4)' }}>
 
             {/* Logo */}
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
               <div style={{
-                width: 32, height: 32, borderRadius: 8,
+                width: 30, height: 30, borderRadius: 7,
                 background: 'var(--gradient-gold)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontSize: 16, boxShadow: 'var(--shadow-gold)',
-              }}>🎬</div>
-              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.1rem', letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
+                flexShrink: 0,
+              }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="#0d0a02">
+                  <path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+                </svg>
+              </div>
+              <span style={{ fontFamily: 'var(--font-display)', fontWeight: 900, fontSize: '1.05rem', letterSpacing: '-0.02em', color: 'var(--text-primary)' }}>
                 Cine<span style={{ color: 'var(--gold)' }}>Match</span>
               </span>
             </div>
 
-            {/* Step indicators */}
-            <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-              {STEPS.map((s) => {
+            {/* Step indicators — desktop */}
+            <div style={{ display: 'flex', gap: 'var(--space-1)', alignItems: 'center' }}>
+              {STEPS.map((s, i) => {
                 const isDone    = s.num < step;
                 const isCurrent = s.num === step;
                 return (
-                  <div key={s.num} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                    <div style={{
-                      width: isCurrent ? 34 : 28,
-                      height: isCurrent ? 34 : 28,
-                      borderRadius: '50%',
-                      background: isDone || isCurrent
-                        ? 'var(--gradient-gold)'
-                        : 'var(--bg-overlay)',
-                      border: `2px solid ${isDone || isCurrent ? 'var(--gold)' : 'var(--border-default)'}`,
-                      display: 'flex', alignItems: 'center', justifyContent: 'center',
-                      fontSize: isCurrent ? '0.85rem' : '0.75rem',
-                      fontWeight: 800,
-                      color: isDone || isCurrent ? '#0a0805' : 'var(--text-muted)',
-                      transition: 'all var(--t-base)',
-                      boxShadow: isCurrent ? '0 0 16px rgba(201,168,76,0.4)' : 'none',
-                      flexShrink: 0,
-                    }}>
-                      {isDone ? '✓' : s.num}
+                  <React.Fragment key={s.num}>
+                    {i > 0 && (
+                      <div style={{
+                        width: 20, height: 1,
+                        background: isDone ? 'var(--gold)' : 'var(--border-default)',
+                        transition: 'background var(--t-base)',
+                        display: 'var(--step-connector-display, flex)',
+                      }} className="step-connector" />
+                    )}
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
+                      <div style={{
+                        width: isCurrent ? 32 : 26,
+                        height: isCurrent ? 32 : 26,
+                        borderRadius: '50%',
+                        background: isDone
+                          ? 'var(--gradient-gold)'
+                          : isCurrent
+                            ? 'rgba(212,168,67,0.12)'
+                            : 'var(--bg-elevated)',
+                        border: `2px solid ${isDone || isCurrent ? 'var(--gold)' : 'var(--border-default)'}`,
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: isCurrent ? '0.82rem' : '0.72rem',
+                        fontWeight: 800,
+                        color: isDone ? '#0d0a02' : isCurrent ? 'var(--gold)' : 'var(--text-muted)',
+                        transition: 'all var(--t-base)',
+                        boxShadow: isCurrent ? '0 0 14px rgba(212,168,67,0.35)' : 'none',
+                        flexShrink: 0,
+                      }}>
+                        {isDone ? (
+                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0d0a02" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                            <polyline points="20 6 9 17 4 12"/>
+                          </svg>
+                        ) : s.num}
+                      </div>
+                      <span style={{
+                        fontSize: '0.58rem', fontWeight: 600, letterSpacing: '0.04em',
+                        color: isCurrent ? 'var(--gold)' : 'var(--text-disabled)',
+                        textTransform: 'uppercase',
+                      }} className="step-label">
+                        {s.label}
+                      </span>
                     </div>
-                    <span style={{
-                      fontSize: '0.6rem', fontWeight: 600, letterSpacing: '0.04em',
-                      color: isCurrent ? 'var(--gold)' : 'var(--text-disabled)',
-                      display: window.innerWidth > 600 ? 'block' : 'none',
-                    }}>
-                      {s.label}
-                    </span>
-                  </div>
+                  </React.Fragment>
                 );
               })}
             </div>
 
-            {/* Step counter */}
+            {/* Step counter — compact */}
             <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', flexShrink: 0 }}>
               <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{step}</span>/{totalSteps}
             </div>
@@ -98,28 +119,28 @@ export default function OnboardingLayout({
         </div>
       </header>
 
-      {/* ── Main Content ─────────────────────────────────────── */}
+      {/* Main Content */}
       <main style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
-        <div style={{ maxWidth: 860, margin: '0 auto', padding: 'var(--space-10) var(--space-6)' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-10) var(--space-6) var(--space-20)' }}>
           <div className="animate-fade-in">
             {/* Step badge */}
             <div style={{
               display: 'inline-flex', alignItems: 'center', gap: 8,
               padding: '5px 14px',
-              background: 'rgba(201,168,76,0.08)',
-              border: '1px solid rgba(201,168,76,0.20)',
+              background: 'rgba(212,168,67,0.07)',
+              border: '1px solid rgba(212,168,67,0.18)',
               borderRadius: 'var(--radius-full)',
               marginBottom: 'var(--space-5)',
             }}>
               <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)', display: 'inline-block', boxShadow: '0 0 5px var(--gold)' }} />
-              <span style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
+              <span style={{ fontSize: '0.67rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
                 Step {step} of {totalSteps}
               </span>
             </div>
 
-            <h1 style={{ marginBottom: 'var(--space-3)', fontSize: 'clamp(1.5rem, 4vw, 2.2rem)' }}>{title}</h1>
+            <h1 style={{ marginBottom: 'var(--space-3)', fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>{title}</h1>
             {subtitle && (
-              <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-8)', maxWidth: 560 }}>
+              <p style={{ color: 'var(--text-secondary)', marginBottom: 'var(--space-8)', maxWidth: 560, lineHeight: 1.7 }}>
                 {subtitle}
               </p>
             )}
@@ -129,33 +150,35 @@ export default function OnboardingLayout({
         </div>
       </main>
 
-      {/* ── Sticky Footer Actions ─────────────────────────────── */}
+      {/* Sticky Footer Actions */}
       <footer style={{
         position: 'sticky', bottom: 0, zIndex: 'var(--z-nav)',
-        background: 'rgba(5,8,15,0.95)', backdropFilter: 'blur(20px)',
+        background: 'rgba(13,15,20,0.97)', backdropFilter: 'blur(20px)',
         borderTop: '1px solid var(--border-subtle)',
         padding: 'var(--space-4) 0',
       }}>
-        <div style={{ maxWidth: 860, margin: '0 auto', padding: '0 var(--space-6)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', justifyContent: 'space-between' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 var(--space-6)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', justifyContent: 'space-between' }}>
           {/* Back */}
           <div>
             {onBack && (
               <button id={`ob-back-${step}`} className="btn btn--ghost" onClick={onBack} disabled={isLoading}>
-                ← Back
+                Back
               </button>
             )}
           </div>
 
           {/* Right side */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            <div style={{ display: 'flex', gap: 6 }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+            {/* Dot progress */}
+            <div style={{ display: 'flex', gap: 5 }}>
               {STEPS.map(s => (
                 <div key={s.num} style={{
-                  width: s.num === step ? 20 : 6, height: 6,
+                  width: s.num === step ? 18 : 5, height: 5,
                   borderRadius: 'var(--radius-full)',
-                  background: s.num < step ? 'var(--gold)' : s.num === step ? 'var(--gradient-gold)' : 'var(--bg-overlay)',
+                  background: s.num < step ? 'var(--gold)' : s.num === step ? 'var(--gold)' : 'var(--bg-overlay)',
                   transition: 'all var(--t-base)',
-                  boxShadow: s.num === step ? '0 0 8px rgba(201,168,76,0.5)' : 'none',
+                  opacity: s.num <= step ? 1 : 0.4,
+                  boxShadow: s.num === step ? '0 0 8px rgba(212,168,67,0.5)' : 'none',
                 }} />
               ))}
             </div>
@@ -167,13 +190,23 @@ export default function OnboardingLayout({
               disabled={isLoading || !canProceed}
             >
               {isLoading
-                ? <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Spinner size="sm" /> Saving…</span>
+                ? <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Spinner size="sm" /> Saving</span>
                 : nextLabel
               }
             </button>
           </div>
         </div>
       </footer>
+
+      <style>{`
+        @media (max-width: 600px) {
+          .step-label { display: none !important; }
+          .step-connector { width: 10px !important; }
+        }
+        @media (max-width: 400px) {
+          .step-connector { display: none !important; }
+        }
+      `}</style>
     </div>
   );
 }

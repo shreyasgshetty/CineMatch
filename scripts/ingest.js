@@ -27,8 +27,11 @@ const TMDB_BASE      = 'https://api.themoviedb.org/3';
 const TMDB_KEY       = process.env.TMDB_API_KEY;
 const MONGO_URI      = process.env.MONGODB_URI;
 const DRY_RUN        = process.argv.includes('--dry-run');
-const PAGES_PER_LANG = 10; // 10 pages × 20 results = 200 items per language (~4400 total)
-const DELAY_MS       = 300; // ~3.3 req/s — comfortably under TMDB's 40/10s limit
+const PAGES_PER_LANG = 10; // 10 pages × 20 results = 200 items per language
+const DELAY_MS       = 280; // ~3.5 req/s — under TMDB's 40/10s limit
+// --only kn,te,ta  → ingest only those languages
+const ONLY_FLAG = process.argv.find(a => a.startsWith('--only='));
+const ONLY_LANGS = ONLY_FLAG ? ONLY_FLAG.replace('--only=', '').split(',') : null;
 
 // Language → industry mapping
 const LANGUAGE_TO_INDUSTRY = {
@@ -40,7 +43,8 @@ const LANGUAGE_TO_INDUSTRY = {
 };
 
 // Languages to ingest — all supported languages
-const INGEST_LANGUAGES = ['kn', 'te', 'ta', 'ml', 'hi', 'bn', 'mr', 'pa', 'en', 'ko', 'ja'];
+// All 14 supported languages — zh, es, fr added
+const INGEST_LANGUAGES = ['kn', 'te', 'ta', 'ml', 'hi', 'bn', 'mr', 'pa', 'en', 'ko', 'ja', 'zh', 'es', 'fr'];
 
 // TMDB genre ID → name map
 const TMDB_GENRE_MAP = {
@@ -56,16 +60,43 @@ const TMDB_GENRE_MAP = {
 // ── Helpers ───────────────────────────────────────────────────
 const delay = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-const tmdbFetch = async (path, params = {}) => {
+/**
+ * Fetch from TMDB with retry + exponential backoff.
+ * Handles ECONNRESET, 429 rate limits, and transient 5xx errors.
+ */
+const tmdbFetch = async (path, params = {}, retries = 4) => {
   const url = new URL(`${TMDB_BASE}${path}`);
   url.searchParams.set('api_key', TMDB_KEY);
   for (const [k, v] of Object.entries(params)) {
     url.searchParams.set(k, v);
   }
 
-  const res = await fetch(url.toString());
-  if (!res.ok) throw new Error(`TMDB API error: ${res.status} for ${path}`);
-  return res.json();
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      const res = await fetch(url.toString());
+
+      // Rate limited — wait and retry
+      if (res.status === 429) {
+        const retryAfter = parseInt(res.headers.get('retry-after') || '10', 10);
+        console.warn(`    [429] Rate limited. Waiting ${retryAfter}s…`);
+        await delay(retryAfter * 1000 + 500);
+        continue;
+      }
+
+      if (!res.ok) throw new Error(`TMDB ${res.status} for ${path}`);
+      return res.json();
+
+    } catch (err) {
+      const isRetryable = err.code === 'ECONNRESET' || err.code === 'ETIMEDOUT' || err.code === 'ENOTFOUND' || err.message.includes('fetch failed');
+      if (isRetryable && attempt < retries) {
+        const wait = 1500 * Math.pow(2, attempt); // 1.5s, 3s, 6s, 12s
+        console.warn(`    [retry ${attempt + 1}/${retries}] ${err.code || err.message}. Waiting ${wait}ms…`);
+        await delay(wait);
+        continue;
+      }
+      throw err;
+    }
+  }
 };
 
 /**
@@ -151,11 +182,11 @@ const normalizeMedia = (item, type, credits, keywords) => {
 
 // ── Main Ingestion Function ───────────────────────────────────
 const ingest = async () => {
-  console.log('\n🎬 CineMatch — TMDB Data Ingestion Script');
+  console.log('\nCineMatch — TMDB Data Ingestion Script');
   console.log('==========================================');
 
   if (!TMDB_KEY) {
-    console.error('❌ TMDB_API_KEY not set in .env');
+    console.error('ERROR: TMDB_API_KEY not set in .env');
     process.exit(1);
   }
 
@@ -164,14 +195,21 @@ const ingest = async () => {
 
   if (!DRY_RUN) {
     await mongoose.connect(MONGO_URI);
-    console.log('✅ Connected to MongoDB\n');
+    console.log('Connected to MongoDB\n');
   }
+
+  const targetLangs = ONLY_LANGS
+    ? INGEST_LANGUAGES.filter(l => ONLY_LANGS.includes(l))
+    : INGEST_LANGUAGES;
+
+  console.log(`Ingesting languages: ${targetLangs.join(', ')}`);
+  if (ONLY_LANGS) console.log('(--only mode: targeted re-ingest)\n');
 
   let totalIngested = 0;
   let totalErrors   = 0;
 
-  for (const lang of INGEST_LANGUAGES) {
-    console.log(`\n📽️  Ingesting ${lang.toUpperCase()} content…`);
+  for (const lang of targetLangs) {
+    console.log(`\nIngesting ${lang.toUpperCase()} (${LANGUAGE_TO_INDUSTRY[lang] || lang})…`);
 
     for (const type of ['movie', 'tv']) {
       const endpoint = type === 'movie' ? '/discover/movie' : '/discover/tv';
@@ -229,9 +267,10 @@ const ingest = async () => {
   }
 
   console.log('\n==========================================');
-  console.log(`✅ Ingestion complete!`);
-  console.log(`   Total ingested: ${totalIngested}`);
-  console.log(`   Errors: ${totalErrors}`);
+  console.log('Ingestion complete!');
+  console.log(`  Total ingested : ${totalIngested}`);
+  console.log(`  Errors         : ${totalErrors}`);
+  console.log('\nRun: node scripts/check-db.js  to verify counts.');
 
   if (!DRY_RUN) {
     await mongoose.disconnect();

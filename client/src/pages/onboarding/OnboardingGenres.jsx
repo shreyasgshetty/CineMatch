@@ -1,36 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { GENRES, GENRE_EMOJIS } from '../../utils/config';
+import { GENRES } from '../../utils/config';
 import { onboardingApi } from '../../services/api';
 import OnboardingLayout from '../../components/onboarding/OnboardingLayout';
 
 const TMDB_IMG = 'https://image.tmdb.org/t/p/w154';
 
 const GENRE_GRADIENT = {
-  Action:       'linear-gradient(135deg,#7f1d1d,#b91c1c)',
-  Adventure:    'linear-gradient(135deg,#064e3b,#065f46)',
-  Animation:    'linear-gradient(135deg,#312e81,#4338ca)',
-  Comedy:       'linear-gradient(135deg,#713f12,#d97706)',
-  Crime:        'linear-gradient(135deg,#1c1917,#44403c)',
-  Documentary:  'linear-gradient(135deg,#1e3a5f,#1e40af)',
-  Drama:        'linear-gradient(135deg,#3b0764,#7e22ce)',
-  Family:       'linear-gradient(135deg,#14532d,#16a34a)',
-  Fantasy:      'linear-gradient(135deg,#1e1b4b,#6d28d9)',
-  History:      'linear-gradient(135deg,#78350f,#b45309)',
-  Horror:       'linear-gradient(135deg,#0f172a,#1e293b)',
-  Music:        'linear-gradient(135deg,#831843,#db2777)',
-  Mystery:      'linear-gradient(135deg,#1c1917,#292524)',
-  Romance:      'linear-gradient(135deg,#881337,#be123c)',
-  'Sci-Fi':     'linear-gradient(135deg,#0c4a6e,#0369a1)',
-  Thriller:     'linear-gradient(135deg,#1a1a2e,#16213e)',
-  War:          'linear-gradient(135deg,#1c1917,#3f3f46)',
-  Western:      'linear-gradient(135deg,#78350f,#92400e)',
-  'TV Movie':   'linear-gradient(135deg,#1e3a5f,#2563eb)',
+  Action:       'linear-gradient(145deg,#2a0404 0%,#8a1010 50%,#c41818 100%)',
+  Adventure:    'linear-gradient(145deg,#041a10 0%,#0e5430 50%,#167848 100%)',
+  Animation:    'linear-gradient(145deg,#0c0a28 0%,#2a247a 50%,#3e38b2 100%)',
+  Comedy:       'linear-gradient(145deg,#1e0e00 0%,#7a3800 50%,#b85a00 100%)',
+  Crime:        'linear-gradient(145deg,#080808 0%,#202020 50%,#383838 100%)',
+  Documentary:  'linear-gradient(145deg,#060e20 0%,#102060 50%,#183090 100%)',
+  Drama:        'linear-gradient(145deg,#140420 0%,#4a1268 50%,#701c9e 100%)',
+  Family:       'linear-gradient(145deg,#041a04 0%,#126212 50%,#1c9020 100%)',
+  Fantasy:      'linear-gradient(145deg,#080620 0%,#281a80 50%,#4028b8 100%)',
+  History:      'linear-gradient(145deg,#200c00 0%,#723000 50%,#a84800 100%)',
+  Horror:       'linear-gradient(145deg,#020204 0%,#0a0814 50%,#140c20 100%)',
+  Music:        'linear-gradient(145deg,#240412 0%,#7a0e38 50%,#b41858 100%)',
+  Mystery:      'linear-gradient(145deg,#060608 0%,#181820 50%,#222232 100%)',
+  Romance:      'linear-gradient(145deg,#1e0406 0%,#780e16 50%,#b01826 100%)',
+  'Sci-Fi':     'linear-gradient(145deg,#020e18 0%,#083870 50%,#104ea8 100%)',
+  Thriller:     'linear-gradient(145deg,#06060e 0%,#0e0e22 50%,#161630 100%)',
+  War:          'linear-gradient(145deg,#080604 0%,#1e1a10 50%,#2e2818 100%)',
+  Western:      'linear-gradient(145deg,#180800 0%,#643000 50%,#944800 100%)',
+  'TV Movie':   'linear-gradient(145deg,#060e1e 0%,#102060 50%,#183090 100%)',
+};
+
+// Short icon labels for each genre
+const GENRE_ICON = {
+  Action: 'ACT', Adventure: 'ADV', Animation: 'ANI', Comedy: 'COM',
+  Crime: 'CRM', Documentary: 'DOC', Drama: 'DRM', Family: 'FAM',
+  Fantasy: 'FAN', History: 'HST', Horror: 'HOR', Music: 'MUS',
+  Mystery: 'MYS', Romance: 'ROM', 'Sci-Fi': 'SCI', Thriller: 'THR',
+  War: 'WAR', Western: 'WST', 'TV Movie': 'TVM',
 };
 
 function PosterCollage({ posters, gradient }) {
   if (!posters || posters.length < 2) {
-    return <div style={{ position: 'absolute', inset: 0, background: gradient || '#111' }} />;
+    return (
+      <div style={{ position: 'absolute', inset: 0, background: gradient || '#111' }}>
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse at 35% 65%, rgba(255,255,255,0.07) 0%, transparent 55%)',
+        }} />
+      </div>
+    );
   }
   const slots = [...posters, ...posters].slice(0, 4);
   return (
@@ -51,24 +67,69 @@ function PosterCollage({ posters, gradient }) {
 }
 
 function GenreCard({ genre, isSelected, onToggle, posters }) {
+  const [hovered, setHovered] = useState(false);
+
   return (
     <button
       id={`genre-${genre.id}`}
       type="button"
       onClick={() => onToggle(genre.name)}
-      style={{ position: 'relative', aspectRatio: '2/3', minHeight: 140, width: '100%', border: 'none', padding: 0, cursor: 'pointer', borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: 'none' }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+      style={{
+        position: 'relative', aspectRatio: '2/3', minHeight: 130, width: '100%',
+        border: 'none', padding: 0, cursor: 'pointer',
+        borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: 'none',
+        transition: 'transform var(--t-base), box-shadow var(--t-base)',
+        transform: hovered && !isSelected ? 'translateY(-3px)' : isSelected ? 'translateY(-2px)' : 'none',
+        outline: isSelected ? '2.5px solid var(--gold)' : '2.5px solid transparent',
+        boxShadow: isSelected
+          ? '0 0 0 2.5px var(--gold), 0 8px 28px rgba(212,168,67,0.30)'
+          : hovered ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
+      }}
     >
       <PosterCollage posters={posters} gradient={GENRE_GRADIENT[genre.name] || '#1a1a2e'} />
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.92) 42%, rgba(0,0,0,0.12) 100%)' }} />
+
+      {/* Base dark overlay */}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.94) 38%, rgba(0,0,0,0.10) 100%)' }} />
+
+      {/* Selected tint */}
       {isSelected && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(201,168,76,0.2)', border: '3px solid var(--gold)', borderRadius: 'var(--radius-lg)', boxShadow: '0 0 24px rgba(201,168,76,0.4) inset, 0 0 20px rgba(201,168,76,0.3)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(212,168,67,0.10)' }} />
       )}
+
+      {/* Check badge */}
       {isSelected && (
-        <div style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22, borderRadius: '50%', background: 'var(--gradient-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.6rem', fontWeight: 900, color: '#0a0805', boxShadow: '0 0 8px rgba(201,168,76,0.6)' }}>✓</div>
+        <div style={{
+          position: 'absolute', top: 8, right: 8,
+          width: 22, height: 22, borderRadius: '50%',
+          background: 'var(--gradient-gold)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          boxShadow: '0 0 10px rgba(212,168,67,0.6)',
+        }}>
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0d0a02" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
       )}
+
+      {/* Genre text */}
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px 10px' }}>
-        <div style={{ fontSize: '1.2rem', lineHeight: 1, marginBottom: 3 }}>{GENRE_EMOJIS[genre.name] || '🎬'}</div>
-        <div style={{ fontWeight: 800, fontSize: '0.78rem', lineHeight: 1.2, color: isSelected ? 'var(--gold)' : '#fff', textShadow: '0 1px 4px rgba(0,0,0,0.9)', transition: 'color 0.15s' }}>
+        {/* Short identifier tag */}
+        <div style={{
+          fontSize: '0.52rem', fontWeight: 900, letterSpacing: '0.1em',
+          color: isSelected ? 'var(--gold)' : 'rgba(255,255,255,0.45)',
+          textTransform: 'uppercase', marginBottom: 3,
+          transition: 'color var(--t-fast)',
+        }}>
+          {GENRE_ICON[genre.name] || '---'}
+        </div>
+        <div style={{
+          fontWeight: 800, fontSize: '0.78rem', lineHeight: 1.2,
+          color: isSelected ? 'var(--gold)' : '#fff',
+          textShadow: '0 1px 4px rgba(0,0,0,0.9)',
+          transition: 'color var(--t-fast)',
+        }}>
           {genre.name}
         </div>
       </div>
@@ -78,7 +139,6 @@ function GenreCard({ genre, isSelected, onToggle, posters }) {
 
 export default function OnboardingGenres() {
   const navigate = useNavigate();
-
   const [selected, setSelected]   = useState([]);
   const [previews, setPreviews]   = useState({});
   const [isLoading, setIsLoading] = useState(false);
@@ -86,10 +146,9 @@ export default function OnboardingGenres() {
 
   useEffect(() => {
     const languages = JSON.parse(sessionStorage.getItem('ob_languages') || '[]').join(',');
-    // Fetch genre previews using the user's selected languages so posters are relevant
     onboardingApi.getGenrePreviews({ languages })
       .then(res => setPreviews(res.data.previews || {}))
-      .catch(() => {}); // fall back to gradients silently
+      .catch(() => {});
   }, []);
 
   const toggle = (name) => {
@@ -101,7 +160,6 @@ export default function OnboardingGenres() {
     setIsLoading(true);
     setError('');
     try {
-      // Build genre payload: selected = "like", unselected = omitted
       const genrePayload = Object.fromEntries(selected.map(name => [name, 'like']));
       await onboardingApi.saveGenres({ genres: genrePayload });
       sessionStorage.setItem('ob_genres', JSON.stringify(selected));
@@ -122,31 +180,36 @@ export default function OnboardingGenres() {
       onNext={handleNext}
       isLoading={isLoading}
       canProceed={true}
-      nextLabel={selCount > 0 ? `Continue with ${selCount} genre${selCount > 1 ? 's' : ''} →` : 'Skip genres →'}
+      nextLabel={selCount > 0 ? `Continue with ${selCount} genre${selCount > 1 ? 's' : ''}` : 'Skip genres'}
     >
       {error && (
-        <div style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3) var(--space-4)', marginBottom: 'var(--space-5)', color: '#FCA5A5', fontSize: '0.85rem' }}>
-          ⚠️ {error}
+        <div className="info-banner info-banner--error" style={{ marginBottom: 'var(--space-5)' }}>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          {error}
         </div>
       )}
 
-      {/* Selection summary */}
       {selCount > 0 && (
-        <div style={{ padding: 'var(--space-2) var(--space-4)', background: 'rgba(201,168,76,0.06)', border: '1px solid rgba(201,168,76,0.18)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-5)', fontSize: '0.8rem', color: 'var(--gold)', display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-          <span style={{ fontWeight: 700 }}>✓ {selCount} selected:</span>
-          {selected.map(name => (
-            <span key={name} style={{ padding: '2px 10px', background: 'rgba(201,168,76,0.12)', border: '1px solid rgba(201,168,76,0.25)', borderRadius: 'var(--radius-full)', fontSize: '0.72rem', fontWeight: 600 }}>{name}</span>
-          ))}
+        <div style={{
+          display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center',
+          marginBottom: 'var(--space-5)',
+          padding: 'var(--space-3) var(--space-4)',
+          background: 'rgba(212,168,67,0.05)',
+          border: '1px solid rgba(212,168,67,0.15)',
+          borderRadius: 'var(--radius-md)',
+        }}>
+          <span style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--gold)', marginRight: 4 }}>{selCount} selected:</span>
+          {selected.map(name => <span key={name} className="chip">{name}</span>)}
         </div>
       )}
 
       {selCount === 0 && (
-        <div style={{ padding: 'var(--space-3) var(--space-4)', background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-md)', marginBottom: 'var(--space-5)', fontSize: '0.78rem', color: 'var(--text-muted)', display: 'flex', gap: 8, alignItems: 'center' }}>
-          <span>💡</span> Tap any genre to select it — you can pick as many as you like
+        <div className="info-banner" style={{ marginBottom: 'var(--space-5)' }}>
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Tap any genre to select it — you can pick as many as you like
         </div>
       )}
 
-      {/* Genre grid */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-3)' }}>
         {GENRES.map(genre => (
           <GenreCard
