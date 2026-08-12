@@ -43,13 +43,17 @@ const NAV_CARDS = [
 
 const PHASES = [
   { done: true,  label: 'Project setup and structure' },
-  { done: true,  label: 'TMDB ingestion script ready' },
+  { done: true,  label: 'TMDB ingestion — 23,000+ titles across 14 languages' },
   { done: true,  label: 'MongoDB models (User, Media, Interaction, Recommendation)' },
   { done: true,  label: 'Authentication (JWT + bcrypt)' },
-  { done: false, label: 'Language and industry onboarding UI' },
-  { done: false, label: 'Movie rating onboarding' },
-  { done: false, label: 'Genre, actor, director preferences' },
-  { done: false, label: 'Python ML recommendation engine' },
+  { done: true,  label: 'Language and industry onboarding UI' },
+  { done: true,  label: 'Movie rating onboarding' },
+  { done: true,  label: 'Genre, actor, director preferences' },
+  { done: true,  label: 'Search & Browse page with filters and pagination' },
+  { done: true,  label: 'Media detail page with cast, similar titles, user rating' },
+  { done: true,  label: 'Recommendations page with match scores and reason tags' },
+  { done: false, label: 'Python ML recommendation engine (TF-IDF / collaborative)' },
+  { done: false, label: 'Profile page — history, ratings, preference editor' },
 ];
 
 export default function HomePage() {
@@ -116,13 +120,8 @@ export default function HomePage() {
 function NavCard({ item }) {
   const [hovered, setHovered] = React.useState(false);
   return (
-    <Link to={item.link} style={{ textDecoration: 'none' }}
-      onMouseEnter={() => {}}
-      onMouseLeave={() => {}}
-    >
+    <Link to={item.link} style={{ textDecoration: 'none' }}>
       <div
-        onMouseEnter={() => {}}
-        onMouseLeave={() => {}}
         style={{
           padding: 'var(--space-6)',
           background: hovered ? 'var(--bg-card-hover)' : 'var(--bg-card)',

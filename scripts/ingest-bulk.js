@@ -46,9 +46,9 @@ const ONLY_LANGS = ONLY_FLAG ? ONLY_FLAG.replace('--only=', '').split(',') : nul
 // sorts: TMDB sort_by strategies — order matters (best first)
 const LANG_CONFIG = {
   // Major Indian
-  kn: { pages: 30, minVotes: 3,  label: 'Kannada (Sandalwood)',  sorts: ['popularity.desc', 'vote_count.desc', 'vote_average.desc'] },
-  te: { pages: 40, minVotes: 5,  label: 'Telugu (Tollywood)',    sorts: ['popularity.desc', 'vote_count.desc'] },
-  ta: { pages: 40, minVotes: 5,  label: 'Tamil (Kollywood)',     sorts: ['popularity.desc', 'vote_count.desc'] },
+  kn: { pages: 41, minVotes: 1,  label: 'Kannada (Sandalwood)',  sorts: ['popularity.desc', 'vote_count.desc', 'vote_average.desc'] },
+  te: { pages: 57, minVotes: 1,  label: 'Telugu (Tollywood)',    sorts: ['popularity.desc', 'vote_count.desc'] },
+  ta: { pages: 79, minVotes: 1,  label: 'Tamil (Kollywood)',     sorts: ['popularity.desc', 'vote_count.desc'] },
   ml: { pages: 35, minVotes: 3,  label: 'Malayalam (Mollywood)', sorts: ['popularity.desc', 'vote_count.desc'] },
   hi: { pages: 50, minVotes: 5,  label: 'Hindi (Bollywood)',     sorts: ['popularity.desc', 'vote_count.desc', 'primary_release_date.desc'] },
   // Smaller Indian
