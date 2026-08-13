@@ -6,11 +6,7 @@ load_dotenv(Path('../server/.env'))
 import pymongo
 
 client = pymongo.MongoClient(os.environ['MONGODB_URI'])
-uri = os.environ['MONGODB_URI']
-# Extract DB name: last path component before query string
-from urllib.parse import urlparse
-parsed = urlparse(uri)
-db_name = parsed.path.lstrip('/').split('?')[0] or 'cinematch'
+db_name = "test"   # Mongoose default — Atlas URI has no DB in path
 print("DB name:", db_name)
 db = client[db_name]
 

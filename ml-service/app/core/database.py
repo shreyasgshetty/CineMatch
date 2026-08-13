@@ -9,6 +9,7 @@ db = None
 async def connect_db():
     global _client, db
     _client = motor.motor_asyncio.AsyncIOMotorClient(settings.MONGO_URI)
+    # Use DB_NAME directly — Atlas SRV URIs have no DB in the path
     db = _client[settings.DB_NAME]
 
 
