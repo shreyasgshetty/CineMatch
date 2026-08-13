@@ -14,8 +14,8 @@ import { useParams, useNavigate, Link } from 'react-router-dom';
 import { mediaApi, recommendationApi, interactionApi } from '../services/api';
 
 const TMDB_BACKDROP = 'https://image.tmdb.org/t/p/w1280';
-const TMDB_POSTER   = 'https://image.tmdb.org/t/p/w342';
-const TMDB_PROFILE  = 'https://image.tmdb.org/t/p/w185';
+const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342';
+const TMDB_PROFILE = 'https://image.tmdb.org/t/p/w185';
 
 // ── Helpers ────────────────────────────────────────────────────
 function StarRating({ value, onChange }) {
@@ -64,13 +64,13 @@ function SimilarCard({ item }) {
         {poster
           ? <img src={poster} alt={item.title} loading="lazy" />
           : <div style={{ width: '100%', height: '100%', background: 'var(--bg-elevated)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>
-            </div>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2" /></svg>
+          </div>
         }
         <div className="media-card__overlay" />
         {item.rating > 0 && (
           <div className="media-card__badge">
-            <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+            <svg width="9" height="9" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
             {item.rating.toFixed(1)}
           </div>
         )}
@@ -91,8 +91,8 @@ function PersonCard({ person, role }) {
         {img
           ? <img src={img} alt={person.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} loading="lazy" />
           : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-            </div>
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></svg>
+          </div>
         }
       </div>
       <div style={{ textAlign: 'center' }}>
@@ -136,23 +136,44 @@ export default function MediaDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
 
-  const [media, setMedia]         = useState(null);
-  const [similar, setSimilar]     = useState([]);
-  const [loading, setLoading]     = useState(true);
-  const [error, setError]         = useState(null);
+  const [media, setMedia] = useState(null);
+  const [similar, setSimilar] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [userRating, setUserRating] = useState(0);
   const [ratingSubmitted, setRatingSubmitted] = useState(false);
   const [ratingLoading, setRatingLoading] = useState(false);
 
   useEffect(() => {
     window.scrollTo({ top: 0, behavior: 'instant' });
-    setMedia(null); setSimilar([]); setLoading(true); setError(null);
-    setUserRating(0); setRatingSubmitted(false);
+
+    setMedia(null);
+    setSimilar([]);
+    setLoading(true);
+    setError(null);
+
+    setUserRating(0);
+    setRatingSubmitted(false);
 
     (async () => {
       try {
-        const res = await mediaApi.getById(id);
-        setMedia(res.data.media);
+        // Fetch movie details and the user's saved rating
+        const [mediaRes, interactionRes] = await Promise.all([
+          mediaApi.getById(id),
+          interactionApi.getForMedia(id),
+        ]);
+
+        // Set movie details
+        setMedia(mediaRes.data.media);
+
+        // Restore previously saved rating
+        const savedInteraction = interactionRes.data.interaction;
+
+        if (savedInteraction?.rating) {
+          setUserRating(savedInteraction.rating);
+          setRatingSubmitted(true);
+        }
+
       } catch {
         setError('Could not load this title.');
       } finally {
@@ -166,14 +187,14 @@ export default function MediaDetailPage() {
     if (!media?._id) return;
     recommendationApi.getSimilar(media._id, { limit: 12 })
       .then(res => setSimilar(res.data.similar || []))
-      .catch(() => {});
+      .catch(() => { });
   }, [media?._id]);
 
   const handleRate = async (stars) => {
     setUserRating(stars);
     setRatingLoading(true);
     try {
-      await interactionApi.record({ mediaId: id, type: 'rating', rating: stars });
+      await interactionApi.record({ mediaId: id, action: 'rated', rating: stars });
       setRatingSubmitted(true);
     } catch {
       // silent — rating UI still updates
@@ -185,15 +206,15 @@ export default function MediaDetailPage() {
   if (loading) return <SkeletonDetail />;
   if (error || !media) return (
     <div style={{ minHeight: '80vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 'var(--space-4)', color: 'var(--text-muted)' }}>
-      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.35 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ opacity: 0.35 }}><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
       <p style={{ color: 'var(--text-secondary)' }}>{error || 'Title not found.'}</p>
       <button className="btn btn--ghost btn--sm" onClick={() => navigate(-1)}>← Go back</button>
     </div>
   );
 
   const backdrop = media.backdropPath ? `${TMDB_BACKDROP}${media.backdropPath}` : null;
-  const poster   = media.posterPath   ? `${TMDB_POSTER}${media.posterPath}`     : null;
-  const runtime  = media.runtime ? `${Math.floor(media.runtime / 60)}h ${media.runtime % 60}m` : null;
+  const poster = media.posterPath ? `${TMDB_POSTER}${media.posterPath}` : null;
+  const runtime = media.runtime ? `${Math.floor(media.runtime / 60)}h ${media.runtime % 60}m` : null;
 
   return (
     <div style={{ minHeight: '100vh', paddingBottom: 'var(--space-16)' }}>
@@ -241,7 +262,7 @@ export default function MediaDetailPage() {
                 {runtime && <><span style={{ color: 'var(--text-muted)' }}>·</span><span>{runtime}</span></>}
                 {media.rating > 0 && (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: 'var(--gold)', fontWeight: 700 }}>
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2" /></svg>
                     {media.rating.toFixed(1)}
                     <span style={{ color: 'var(--text-muted)', fontWeight: 400, fontSize: '0.78rem' }}>({media.voteCount?.toLocaleString()} votes)</span>
                   </span>
@@ -305,7 +326,7 @@ export default function MediaDetailPage() {
               <div style={{ marginBottom: 'var(--space-8)' }}>
                 <div className="section__header" style={{ marginBottom: 'var(--space-4)' }}>
                   <div className="section__title" style={{ fontSize: '1rem' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><circle cx="9" cy="7" r="4" /><path d="M23 21v-2a4 4 0 0 0-3-3.87" /><path d="M16 3.13a4 4 0 0 1 0 7.75" /></svg>
                     Cast
                   </div>
                 </div>
@@ -324,7 +345,7 @@ export default function MediaDetailPage() {
               <div style={{ marginBottom: 'var(--space-8)' }}>
                 <div className="section__header" style={{ marginBottom: 'var(--space-4)' }}>
                   <div className="section__title" style={{ fontSize: '1rem' }}>
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" /></svg>
                     More Like This
                   </div>
                 </div>
@@ -338,16 +359,16 @@ export default function MediaDetailPage() {
           {/* ── Right Sidebar ─────────────────────────────────── */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
             <div style={{ background: 'var(--bg-card)', border: '1px solid var(--border-subtle)', borderRadius: 'var(--radius-xl)', padding: 'var(--space-5)', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
-              <MetaItem label="Status"          value={media.type === 'tv' ? 'TV Series' : 'Movie'} />
-              <MetaItem label="Release Year"    value={media.releaseYear} />
-              <MetaItem label="Runtime"         value={runtime} />
-              <MetaItem label="Language"        value={media.originalLanguage?.toUpperCase()} />
-              <MetaItem label="Industry"        value={media.industry} />
+              <MetaItem label="Status" value={media.type === 'tv' ? 'TV Series' : 'Movie'} />
+              <MetaItem label="Release Year" value={media.releaseYear} />
+              <MetaItem label="Runtime" value={runtime} />
+              <MetaItem label="Language" value={media.originalLanguage?.toUpperCase()} />
+              <MetaItem label="Industry" value={media.industry} />
               {media.voteCount > 0 && (
-                <MetaItem label="TMDB Votes"    value={media.voteCount.toLocaleString()} />
+                <MetaItem label="TMDB Votes" value={media.voteCount.toLocaleString()} />
               )}
               {media.popularity > 0 && (
-                <MetaItem label="Popularity"    value={media.popularity.toFixed(0)} />
+                <MetaItem label="Popularity" value={media.popularity.toFixed(0)} />
               )}
             </div>
 

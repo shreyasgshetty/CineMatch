@@ -15,10 +15,10 @@
  */
 
 const express = require('express');
-const router  = express.Router();
-const auth    = require('../middleware/auth');
-const User    = require('../models/User');
-const Media   = require('../models/Media');
+const router = express.Router();
+const auth = require('../middleware/auth');
+const User = require('../models/User');
+const Media = require('../models/Media');
 const Interaction = require('../models/Interaction');
 const Recommendation = require('../models/Recommendation');
 
@@ -41,6 +41,24 @@ const actionToSignal = (action, rating) => {
   if (action === 'watched') return 0.1; // Weak positive signal
   return 0;
 };
+
+router.get('/:mediaId', auth, async (req, res, next) => {
+  try {
+    const interaction = await Interaction.findOne({
+      userId: req.user.userId,
+      mediaId: req.params.mediaId,
+      action: 'rated',
+    })
+      .sort({ timestamp: -1 })
+      .select('action rating timestamp');
+
+    res.json({
+      interaction: interaction || null,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
 
 // ── POST /api/interactions ────────────────────────────────────
 router.post('/', auth, async (req, res, next) => {
