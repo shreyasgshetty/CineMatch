@@ -190,7 +190,7 @@ export default function OnboardingLanguages() {
     try {
       await onboardingApi.saveLanguages({ languages: selected });
       sessionStorage.setItem('ob_languages', JSON.stringify(selected));
-      navigate('/onboarding/genres');
+      navigate('/onboarding/vibe');
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong.');
     } finally { setIsLoading(false); }
@@ -201,7 +201,7 @@ export default function OnboardingLanguages() {
 
   return (
     <OnboardingLayout
-      step={1} totalSteps={5}
+      step={1} totalSteps={6}
       title="What cinema do you love?"
       subtitle="Pick your languages — we'll build your personal universe from the very best of each industry"
       onNext={handleNext}

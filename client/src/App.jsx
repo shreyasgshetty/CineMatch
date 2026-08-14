@@ -21,8 +21,9 @@ import Spinner from './components/ui/Spinner';
 const LoginPage            = lazy(() => import('./pages/LoginPage'));
 const RegisterPage         = lazy(() => import('./pages/RegisterPage'));
 const OnboardingLanguages  = lazy(() => import('./pages/onboarding/OnboardingLanguages'));
-const OnboardingMovies     = lazy(() => import('./pages/onboarding/OnboardingMovies'));
+const OnboardingVibe       = lazy(() => import('./pages/onboarding/OnboardingVibe'));
 const OnboardingGenres     = lazy(() => import('./pages/onboarding/OnboardingGenres'));
+const OnboardingMovies     = lazy(() => import('./pages/onboarding/OnboardingMovies'));
 const OnboardingActors     = lazy(() => import('./pages/onboarding/OnboardingActors'));
 const OnboardingDirectors  = lazy(() => import('./pages/onboarding/OnboardingDirectors'));
 const HomePage             = lazy(() => import('./pages/HomePage'));
@@ -77,8 +78,9 @@ function AppRoutes() {
 
         {/* Onboarding Routes (auth required, no layout nav) */}
         <Route path="/onboarding/languages"  element={<OnboardingRoute><OnboardingLanguages /></OnboardingRoute>} />
-        <Route path="/onboarding/movies"     element={<OnboardingRoute><OnboardingMovies /></OnboardingRoute>} />
+        <Route path="/onboarding/vibe"        element={<OnboardingRoute><OnboardingVibe /></OnboardingRoute>} />
         <Route path="/onboarding/genres"     element={<OnboardingRoute><OnboardingGenres /></OnboardingRoute>} />
+        <Route path="/onboarding/movies"     element={<OnboardingRoute><OnboardingMovies /></OnboardingRoute>} />
         <Route path="/onboarding/actors"     element={<OnboardingRoute><OnboardingActors /></OnboardingRoute>} />
         <Route path="/onboarding/directors"  element={<OnboardingRoute><OnboardingDirectors /></OnboardingRoute>} />
 

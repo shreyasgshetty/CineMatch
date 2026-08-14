@@ -4,18 +4,31 @@ import Spinner from '../ui/Spinner';
 
 const STEPS = [
   { num: 1, label: 'Languages' },
-  { num: 2, label: 'Genres'    },
-  { num: 3, label: 'Films'     },
-  { num: 4, label: 'Actors'    },
-  { num: 5, label: 'Directors' },
+  { num: 2, label: 'Vibe'      },
+  { num: 3, label: 'Genres'    },
+  { num: 4, label: 'Films'     },
+  { num: 5, label: 'Actors'    },
+  { num: 6, label: 'Directors' },
 ];
 
 export default function OnboardingLayout({
-  step, totalSteps = 5, title, subtitle,
+  step, totalSteps = 6, title, subtitle,
   onNext, onBack, isLoading, canProceed,
-  nextLabel = 'Continue', children,
+  nextLabel = 'Continue',
+  confidence = 0,   // 0–100 taste accuracy score
+  children,
 }) {
   const progress = (step / totalSteps) * 100;
+
+  // Clamp confidence to 0-100 and round
+  const pct = Math.min(100, Math.max(0, Math.round(confidence)));
+
+  const confidenceLabel =
+    pct < 20  ? 'Just getting started…'  :
+    pct < 40  ? 'Warming up your taste'  :
+    pct < 60  ? 'Getting a clearer picture' :
+    pct < 80  ? 'Your taste is taking shape' :
+    'We know what you love 🎯';
 
   return (
     <div style={{ minHeight: '100vh', background: 'var(--bg-void)', display: 'flex', flexDirection: 'column' }}>
@@ -67,7 +80,7 @@ export default function OnboardingLayout({
                   <React.Fragment key={s.num}>
                     {i > 0 && (
                       <div style={{
-                        width: 20, height: 1,
+                        width: 16, height: 1,
                         background: isDone ? 'var(--gold)' : 'var(--border-default)',
                         transition: 'background var(--t-base)',
                         display: 'var(--step-connector-display, flex)',
@@ -75,8 +88,8 @@ export default function OnboardingLayout({
                     )}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
                       <div style={{
-                        width: isCurrent ? 32 : 26,
-                        height: isCurrent ? 32 : 26,
+                        width: isCurrent ? 30 : 24,
+                        height: isCurrent ? 30 : 24,
                         borderRadius: '50%',
                         background: isDone
                           ? 'var(--gradient-gold)'
@@ -85,7 +98,7 @@ export default function OnboardingLayout({
                             : 'var(--bg-elevated)',
                         border: `2px solid ${isDone || isCurrent ? 'var(--gold)' : 'var(--border-default)'}`,
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: isCurrent ? '0.82rem' : '0.72rem',
+                        fontSize: isCurrent ? '0.78rem' : '0.68rem',
                         fontWeight: 800,
                         color: isDone ? '#0d0a02' : isCurrent ? 'var(--gold)' : 'var(--text-muted)',
                         transition: 'all var(--t-base)',
@@ -93,13 +106,13 @@ export default function OnboardingLayout({
                         flexShrink: 0,
                       }}>
                         {isDone ? (
-                          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0d0a02" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0d0a02" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                             <polyline points="20 6 9 17 4 12"/>
                           </svg>
                         ) : s.num}
                       </div>
                       <span style={{
-                        fontSize: '0.58rem', fontWeight: 600, letterSpacing: '0.04em',
+                        fontSize: '0.55rem', fontWeight: 600, letterSpacing: '0.04em',
                         color: isCurrent ? 'var(--gold)' : 'var(--text-disabled)',
                         textTransform: 'uppercase',
                       }} className="step-label">
@@ -155,56 +168,121 @@ export default function OnboardingLayout({
         position: 'sticky', bottom: 0, zIndex: 'var(--z-nav)',
         background: 'rgba(13,15,20,0.97)', backdropFilter: 'blur(20px)',
         borderTop: '1px solid var(--border-subtle)',
-        padding: 'var(--space-4) 0',
+        padding: 'var(--space-3) 0',
       }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 var(--space-6)', display: 'flex', alignItems: 'center', gap: 'var(--space-3)', justifyContent: 'space-between' }}>
-          {/* Back */}
-          <div>
-            {onBack && (
-              <button id={`ob-back-${step}`} className="btn btn--ghost" onClick={onBack} disabled={isLoading}>
-                Back
-              </button>
-            )}
-          </div>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: '0 var(--space-6)' }}>
 
-          {/* Right side */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
-            {/* Dot progress */}
-            <div style={{ display: 'flex', gap: 5 }}>
-              {STEPS.map(s => (
-                <div key={s.num} style={{
-                  width: s.num === step ? 18 : 5, height: 5,
-                  borderRadius: 'var(--radius-full)',
-                  background: s.num < step ? 'var(--gold)' : s.num === step ? 'var(--gold)' : 'var(--bg-overlay)',
-                  transition: 'all var(--t-base)',
-                  opacity: s.num <= step ? 1 : 0.4,
-                  boxShadow: s.num === step ? '0 0 8px rgba(212,168,67,0.5)' : 'none',
-                }} />
-              ))}
+          {/* ── Taste Confidence Meter ────────────────────────── */}
+          {pct > 0 && (
+            <div style={{
+              marginBottom: 'var(--space-3)',
+              padding: '8px 12px',
+              background: 'rgba(212,168,67,0.04)',
+              border: '1px solid rgba(212,168,67,0.10)',
+              borderRadius: 'var(--radius-md)',
+              display: 'flex', alignItems: 'center', gap: 10,
+            }}>
+              {/* Pulse dot */}
+              <div style={{
+                width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                background: pct > 60 ? 'var(--gold)' : 'rgba(212,168,67,0.6)',
+                boxShadow: pct > 60 ? '0 0 6px rgba(212,168,67,0.8)' : 'none',
+                animation: 'pulse 2s ease infinite',
+              }} />
+
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{
+                  display: 'flex', justifyContent: 'space-between',
+                  fontSize: '0.6rem', color: 'var(--text-muted)',
+                  marginBottom: 4, letterSpacing: '0.03em',
+                }}>
+                  <span style={{ fontWeight: 600, color: 'rgba(212,168,67,0.75)' }}>Taste accuracy</span>
+                  <span style={{ fontWeight: 800, color: pct > 60 ? 'var(--gold)' : 'rgba(212,168,67,0.7)' }}>{pct}%</span>
+                </div>
+
+                {/* Progress track */}
+                <div style={{
+                  height: 4, borderRadius: 99,
+                  background: 'rgba(255,255,255,0.06)',
+                  overflow: 'hidden',
+                }}>
+                  <div style={{
+                    height: '100%',
+                    width: `${pct}%`,
+                    borderRadius: 99,
+                    background: pct > 70
+                      ? 'var(--gradient-gold)'
+                      : 'linear-gradient(90deg,rgba(212,168,67,0.4),rgba(212,168,67,0.75))',
+                    transition: 'width 0.5s cubic-bezier(0.25,0.46,0.45,0.94)',
+                    boxShadow: pct > 50 ? '0 0 8px rgba(212,168,67,0.4)' : 'none',
+                  }} />
+                </div>
+              </div>
+
+              <span style={{
+                fontSize: '0.58rem', color: 'var(--text-disabled)',
+                whiteSpace: 'nowrap', flexShrink: 0,
+                fontStyle: 'italic',
+              }}>
+                {confidenceLabel}
+              </span>
             </div>
-            <button
-              id={`ob-next-${step}`}
-              className="btn btn--gold"
-              style={{ minWidth: 160 }}
-              onClick={onNext}
-              disabled={isLoading || !canProceed}
-            >
-              {isLoading
-                ? <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Spinner size="sm" /> Saving</span>
-                : nextLabel
-              }
-            </button>
+          )}
+
+          {/* ── Back / Next row ───────────────────────────────── */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', justifyContent: 'space-between' }}>
+            {/* Back */}
+            <div>
+              {onBack && (
+                <button id={`ob-back-${step}`} className="btn btn--ghost" onClick={onBack} disabled={isLoading}>
+                  Back
+                </button>
+              )}
+            </div>
+
+            {/* Right side */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-4)' }}>
+              {/* Dot progress */}
+              <div style={{ display: 'flex', gap: 5 }}>
+                {STEPS.map(s => (
+                  <div key={s.num} style={{
+                    width: s.num === step ? 18 : 5, height: 5,
+                    borderRadius: 'var(--radius-full)',
+                    background: s.num < step ? 'var(--gold)' : s.num === step ? 'var(--gold)' : 'var(--bg-overlay)',
+                    transition: 'all var(--t-base)',
+                    opacity: s.num <= step ? 1 : 0.4,
+                    boxShadow: s.num === step ? '0 0 8px rgba(212,168,67,0.5)' : 'none',
+                  }} />
+                ))}
+              </div>
+              <button
+                id={`ob-next-${step}`}
+                className="btn btn--gold"
+                style={{ minWidth: 160 }}
+                onClick={onNext}
+                disabled={isLoading || !canProceed}
+              >
+                {isLoading
+                  ? <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}><Spinner size="sm" /> Saving</span>
+                  : nextLabel
+                }
+              </button>
+            </div>
           </div>
         </div>
       </footer>
 
       <style>{`
-        @media (max-width: 600px) {
+        @media (max-width: 640px) {
           .step-label { display: none !important; }
-          .step-connector { width: 10px !important; }
+          .step-connector { width: 8px !important; }
         }
-        @media (max-width: 400px) {
+        @media (max-width: 440px) {
           .step-connector { display: none !important; }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(28px) scale(0.97); }
+          to   { opacity: 1; transform: translateY(0)   scale(1); }
         }
       `}</style>
     </div>
