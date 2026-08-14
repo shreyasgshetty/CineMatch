@@ -12,7 +12,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { recommendationApi } from '../services/api';
+import { recommendationApi, interactionApi } from '../services/api';
 
 const TMDB_POSTER = 'https://image.tmdb.org/t/p/w342';
 
@@ -42,12 +42,48 @@ function ScoreBar({ score }) {
   );
 }
 
-function RecommendationCard({ item, index }) {
+function RecommendationCard({ item, index, onFeedback }) {
   const navigate = useNavigate();
+
   const media = item.media || item;
-  const poster = media.posterPath ? `${TMDB_POSTER}${media.posterPath}` : null;
+  const poster = media.posterPath
+    ? `${TMDB_POSTER}${media.posterPath}`
+    : null;
+
   const reasons = item.reasons || [];
-  const score   = item.score || 0;
+  const score = item.score || 0;
+
+  const [submitting, setSubmitting] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+
+  const handleFeedback = async (action, event) => {
+    // Prevent clicking the card and navigating to Media Details
+    event.stopPropagation();
+
+    if (submitting || feedback) return;
+
+    try {
+      setSubmitting(true);
+
+      await interactionApi.record({
+        mediaId: media._id,
+        action,
+      });
+
+      setFeedback(action);
+
+      // Small delay so user can see confirmation
+      setTimeout(() => {
+        onFeedback(media._id);
+      }, 500);
+
+    } catch (error) {
+      console.error('Failed to record interaction:', error);
+      alert('Could not save your feedback. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
 
   return (
     <div
@@ -56,66 +92,277 @@ function RecommendationCard({ item, index }) {
     >
       <div
         style={{
-          display: 'flex', gap: 'var(--space-4)', padding: 'var(--space-4)',
-          background: 'var(--bg-card)', border: '1px solid var(--border-subtle)',
-          borderRadius: 'var(--radius-xl)', cursor: 'pointer', transition: 'all var(--t-base)',
+          display: 'flex',
+          gap: 'var(--space-4)',
+          padding: 'var(--space-4)',
+          background: 'var(--bg-card)',
+          border: '1px solid var(--border-subtle)',
+          borderRadius: 'var(--radius-xl)',
+          cursor: 'pointer',
+          transition: 'all var(--t-base)',
         }}
         onClick={() => navigate(`/media/${media._id}`)}
         role="button"
         tabIndex={0}
-        onKeyDown={e => e.key === 'Enter' && navigate(`/media/${media._id}`)}
-        onMouseEnter={e => { e.currentTarget.style.borderColor = 'var(--border-gold)'; e.currentTarget.style.transform = 'translateY(-2px)'; e.currentTarget.style.boxShadow = 'var(--shadow-lg)'; }}
-        onMouseLeave={e => { e.currentTarget.style.borderColor = 'var(--border-subtle)'; e.currentTarget.style.transform = 'none'; e.currentTarget.style.boxShadow = 'none'; }}
+        onKeyDown={(e) =>
+          e.key === 'Enter' && navigate(`/media/${media._id}`)
+        }
+        onMouseEnter={(e) => {
+          e.currentTarget.style.borderColor = 'var(--border-gold)';
+          e.currentTarget.style.transform = 'translateY(-2px)';
+          e.currentTarget.style.boxShadow = 'var(--shadow-lg)';
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.borderColor = 'var(--border-subtle)';
+          e.currentTarget.style.transform = 'none';
+          e.currentTarget.style.boxShadow = 'none';
+        }}
       >
+
         {/* Rank */}
-        <div style={{ flexShrink: 0, width: 28, display: 'flex', alignItems: 'flex-start', justifyContent: 'center', paddingTop: 4 }}>
-          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: index < 3 ? 'var(--gold)' : 'var(--text-disabled)', fontFamily: 'var(--font-display)' }}>
+        <div
+          style={{
+            flexShrink: 0,
+            width: 28,
+            display: 'flex',
+            alignItems: 'flex-start',
+            justifyContent: 'center',
+            paddingTop: 4,
+          }}
+        >
+          <span
+            style={{
+              fontSize: '0.75rem',
+              fontWeight: 800,
+              color:
+                index < 3
+                  ? 'var(--gold)'
+                  : 'var(--text-disabled)',
+              fontFamily: 'var(--font-display)',
+            }}
+          >
             {String(index + 1).padStart(2, '0')}
           </span>
         </div>
 
         {/* Poster */}
-        <div style={{ flexShrink: 0, width: 70, borderRadius: 'var(--radius-md)', overflow: 'hidden', aspectRatio: '2/3', background: 'var(--bg-elevated)' }}>
-          {poster
-            ? <img src={poster} alt={media.title} style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} loading="lazy" />
-            : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--text-muted)' }}>
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5"><rect x="2" y="3" width="20" height="14" rx="2"/></svg>
-              </div>
-          }
+        <div
+          style={{
+            flexShrink: 0,
+            width: 70,
+            borderRadius: 'var(--radius-md)',
+            overflow: 'hidden',
+            aspectRatio: '2/3',
+            background: 'var(--bg-elevated)',
+          }}
+        >
+          {poster ? (
+            <img
+              src={poster}
+              alt={media.title}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                display: 'block',
+              }}
+              loading="lazy"
+            />
+          ) : (
+            <div
+              style={{
+                width: '100%',
+                height: '100%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: 'var(--text-muted)',
+              }}
+            >
+              <svg
+                width="20"
+                height="20"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="1.5"
+              >
+                <rect x="2" y="3" width="20" height="14" rx="2" />
+              </svg>
+            </div>
+          )}
         </div>
 
         {/* Info */}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 8, marginBottom: 4 }}>
-            <h3 style={{ fontSize: '0.95rem', fontWeight: 700, fontFamily: 'var(--font-display)', color: 'var(--text-primary)', margin: 0, lineHeight: 1.3 }}>
+
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'flex-start',
+              justifyContent: 'space-between',
+              gap: 8,
+              marginBottom: 4,
+            }}
+          >
+            <h3
+              style={{
+                fontSize: '0.95rem',
+                fontWeight: 700,
+                fontFamily: 'var(--font-display)',
+                color: 'var(--text-primary)',
+                margin: 0,
+                lineHeight: 1.3,
+              }}
+            >
               {media.title}
             </h3>
+
             {media.rating > 0 && (
-              <span style={{ flexShrink: 0, display: 'flex', alignItems: 'center', gap: 3, fontSize: '0.78rem', fontWeight: 700, color: 'var(--gold)' }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="currentColor"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                {media.rating.toFixed(1)}
+              <span
+                style={{
+                  flexShrink: 0,
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 3,
+                  fontSize: '0.78rem',
+                  fontWeight: 700,
+                  color: 'var(--gold)',
+                }}
+              >
+                ⭐ {media.rating.toFixed(1)}
               </span>
             )}
           </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)', marginBottom: 'var(--space-2)', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 'var(--space-2)',
+              marginBottom: 'var(--space-2)',
+              fontSize: '0.75rem',
+              color: 'var(--text-muted)',
+            }}
+          >
             {media.releaseYear && <span>{media.releaseYear}</span>}
-            {media.type && <><span>·</span><span style={{ textTransform: 'capitalize' }}>{media.type}</span></>}
-            {media.originalLanguage && <><span>·</span><span style={{ textTransform: 'uppercase' }}>{media.originalLanguage}</span></>}
+            {media.type && (
+              <>
+                <span>·</span>
+                <span style={{ textTransform: 'capitalize' }}>
+                  {media.type}
+                </span>
+              </>
+            )}
+            {media.originalLanguage && (
+              <>
+                <span>·</span>
+                <span style={{ textTransform: 'uppercase' }}>
+                  {media.originalLanguage}
+                </span>
+              </>
+            )}
           </div>
 
           {/* Match score */}
           <div style={{ marginBottom: 'var(--space-2)' }}>
-            <div style={{ fontSize: '0.65rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 4 }}>Match</div>
+            <div
+              style={{
+                fontSize: '0.65rem',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                textTransform: 'uppercase',
+                color: 'var(--text-muted)',
+                marginBottom: 4,
+              }}
+            >
+              Match
+            </div>
+
             <ScoreBar score={score} />
           </div>
 
           {/* Reasons */}
           {reasons.length > 0 && (
-            <div style={{ display: 'flex', gap: 5, flexWrap: 'wrap' }}>
-              {reasons.map((r, i) => <ReasonTag key={i} text={r} />)}
+            <div
+              style={{
+                display: 'flex',
+                gap: 5,
+                flexWrap: 'wrap',
+                marginBottom: 'var(--space-3)',
+              }}
+            >
+              {reasons.map((r, i) => (
+                <ReasonTag key={i} text={r} />
+              ))}
             </div>
           )}
+
+          {/* Feedback Buttons */}
+          <div
+            style={{
+              display: 'flex',
+              gap: 'var(--space-2)',
+              marginTop: 'var(--space-3)',
+            }}
+          >
+            <button
+              type="button"
+              disabled={submitting || feedback}
+              onClick={(e) => handleFeedback('interested', e)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-full)',
+                border: '1px solid rgba(52,211,153,0.3)',
+                background:
+                  feedback === 'interested'
+                    ? 'rgba(52,211,153,0.15)'
+                    : 'transparent',
+                color: 'var(--color-success)',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor:
+                  submitting || feedback
+                    ? 'default'
+                    : 'pointer',
+              }}
+            >
+              {feedback === 'interested'
+                ? '✓ Interested'
+                : submitting
+                  ? 'Saving...'
+                  : '👍 Interested'}
+            </button>
+
+            <button
+              type="button"
+              disabled={submitting || feedback}
+              onClick={(e) => handleFeedback('not_interested', e)}
+              style={{
+                padding: '6px 12px',
+                borderRadius: 'var(--radius-full)',
+                border: '1px solid rgba(239,68,68,0.3)',
+                background:
+                  feedback === 'not_interested'
+                    ? 'rgba(239,68,68,0.12)'
+                    : 'transparent',
+                color: '#ef4444',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                cursor:
+                  submitting || feedback
+                    ? 'default'
+                    : 'pointer',
+              }}
+            >
+              {feedback === 'not_interested'
+                ? '✓ Not interested'
+                : submitting
+                  ? 'Saving...'
+                  : '👎 Not Interested'}
+            </button>
+          </div>
+
         </div>
       </div>
     </div>
@@ -145,11 +392,11 @@ export default function RecommendationsPage() {
   const { user } = useAuth();
   const firstName = user?.name?.split(' ')[0] || 'there';
 
-  const [recs, setRecs]       = useState([]);
+  const [recs, setRecs] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState(null);
-  const [source, setSource]   = useState('');
-  const [limit, setLimit]     = useState(20);
+  const [error, setError] = useState(null);
+  const [source, setSource] = useState('');
+  const [limit, setLimit] = useState(20);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const fetch = useCallback(async () => {
@@ -165,6 +412,21 @@ export default function RecommendationsPage() {
       setLoading(false);
     }
   }, [limit, refreshKey]);
+
+  const handleFeedback = async (mediaId) => {
+    // Remove the movie immediately from the current list
+    setRecs((current) =>
+      current.filter((item) => {
+        const media = item.media || item;
+        return media._id !== mediaId;
+      })
+    );
+
+    // Refresh recommendations after preferences were updated
+    setTimeout(() => {
+      setRefreshKey((k) => k + 1);
+    }, 600);
+  };
 
   useEffect(() => { fetch(); }, [fetch]);
 
@@ -205,8 +467,8 @@ export default function RecommendationsPage() {
                 title="Refresh recommendations"
               >
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" style={{ transition: 'transform 0.5s', transform: loading ? 'rotate(360deg)' : 'none' }}>
-                  <polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/>
-                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+                  <polyline points="23 4 23 10 17 10" /><polyline points="1 20 1 14 7 14" />
+                  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
                 </svg>
                 Refresh
               </button>
@@ -227,7 +489,7 @@ export default function RecommendationsPage() {
         {/* ── Error ──────────────────────────────────────────── */}
         {error && (
           <div className="info-banner info-banner--error animate-fade-in" style={{ marginBottom: 'var(--space-6)' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
             {error}
             <button className="btn btn--ghost btn--sm" onClick={() => setRefreshKey(k => k + 1)} style={{ marginLeft: 'auto' }}>Retry</button>
           </div>
@@ -238,11 +500,18 @@ export default function RecommendationsPage() {
           {loading
             ? Array.from({ length: 8 }).map((_, i) => <SkeletonCard key={i} />)
             : recs.length > 0
-              ? recs.map((item, i) => <RecommendationCard key={item.media?._id || i} item={item} index={i} />)
+              ? recs.map((item, i) => (
+                <RecommendationCard
+                  key={item.media?._id || i}
+                  item={item}
+                  index={i}
+                  onFeedback={handleFeedback}
+                />
+              ))
               : !error && (
                 <div style={{ textAlign: 'center', padding: 'var(--space-20) 0', color: 'var(--text-muted)' }}>
                   <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" style={{ margin: '0 auto var(--space-4)', opacity: 0.3 }}>
-                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
+                    <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
                   </svg>
                   <p style={{ color: 'var(--text-secondary)', fontSize: '1rem', marginBottom: 'var(--space-2)' }}>No recommendations yet</p>
                   <p style={{ fontSize: '0.85rem' }}>Rate some movies to help us learn your taste.</p>

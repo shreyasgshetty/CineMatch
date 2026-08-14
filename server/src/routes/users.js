@@ -6,29 +6,94 @@
 // ── users.js ──────────────────────────────────────────────────
 
 const express = require('express');
-const router  = express.Router();
-const auth    = require('../middleware/auth');
-const User    = require('../models/User');
+const router = express.Router();
+const auth = require('../middleware/auth');
+const User = require('../models/User');
 const Interaction = require('../models/Interaction');
 
+// GET /api/users/profile
 // GET /api/users/profile
 router.get('/profile', auth, async (req, res, next) => {
   try {
     const user = await User.findById(req.user.userId);
-    if (!user) return res.status(404).json({ message: 'User not found.' });
 
-    const [totalInteractions, recentInteractions] = await Promise.all([
-      Interaction.countDocuments({ userId: req.user.userId }),
-      Interaction.find({ userId: req.user.userId })
+    if (!user) {
+      return res.status(404).json({
+        message: 'User not found.',
+      });
+    }
+
+    const [
+      totalInteractions,
+      ratedCount,
+      interestedCount,
+      notInterestedCount,
+      watchedCount,
+      recentInteractions,
+    ] = await Promise.all([
+      Interaction.countDocuments({
+        userId: req.user.userId,
+      }),
+
+      Interaction.countDocuments({
+        userId: req.user.userId,
+        action: 'rated',
+      }),
+
+      Interaction.countDocuments({
+        userId: req.user.userId,
+        action: 'interested',
+      }),
+
+      Interaction.countDocuments({
+        userId: req.user.userId,
+        action: 'not_interested',
+      }),
+
+      Interaction.countDocuments({
+        userId: req.user.userId,
+        action: 'watched',
+      }),
+
+      Interaction.find({
+        userId: req.user.userId,
+      })
         .sort({ timestamp: -1 })
-        .limit(5)
-        .populate('mediaId', 'title posterPath type')
+        .limit(8)
+        .populate(
+          'mediaId',
+          'title posterPath type originalLanguage'
+        )
         .lean(),
     ]);
 
     res.json({
       user: user.toSafeObject(),
-      stats: { totalInteractions },
+
+      stats: {
+        totalInteractions,
+        ratedCount,
+        interestedCount,
+        notInterestedCount,
+        watchedCount,
+      },
+
+      preferences: {
+        languages: user.preferences?.languages || [],
+
+        genres: Object.fromEntries(
+          user.preferences?.genres || new Map()
+        ),
+
+        actors: Object.fromEntries(
+          user.preferences?.actors || new Map()
+        ),
+
+        directors: Object.fromEntries(
+          user.preferences?.directors || new Map()
+        ),
+      },
+
       recentActivity: recentInteractions,
     });
   } catch (error) {
@@ -45,8 +110,8 @@ router.put('/preferences', auth, async (req, res, next) => {
     if (!user) return res.status(404).json({ message: 'User not found.' });
 
     if (languages) user.preferences.languages = languages;
-    if (genres)    user.preferences.genres = new Map(Object.entries(genres));
-    if (actors)    user.preferences.actors = new Map(Object.entries(actors));
+    if (genres) user.preferences.genres = new Map(Object.entries(genres));
+    if (actors) user.preferences.actors = new Map(Object.entries(actors));
     if (directors) user.preferences.directors = new Map(Object.entries(directors));
 
     await user.save();
