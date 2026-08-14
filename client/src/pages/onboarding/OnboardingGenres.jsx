@@ -145,6 +145,10 @@ export default function OnboardingGenres() {
   const [error, setError]         = useState('');
 
   useEffect(() => {
+    // Pre-select genres from vibe choice
+    const vibeGenres = JSON.parse(sessionStorage.getItem('ob_vibe_genres') || '[]');
+    if (vibeGenres.length > 0) setSelected(vibeGenres);
+
     const languages = JSON.parse(sessionStorage.getItem('ob_languages') || '[]').join(',');
     onboardingApi.getGenrePreviews({ languages })
       .then(res => setPreviews(res.data.previews || {}))
@@ -163,6 +167,8 @@ export default function OnboardingGenres() {
       const genrePayload = Object.fromEntries(selected.map(name => [name, 'like']));
       await onboardingApi.saveGenres({ genres: genrePayload });
       sessionStorage.setItem('ob_genres', JSON.stringify(selected));
+      // Persist confidence contribution for downstream steps
+      sessionStorage.setItem('ob_conf_genres', String(Math.min(15, selected.length * 3)));
       navigate('/onboarding/movies');
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong.');
@@ -173,14 +179,15 @@ export default function OnboardingGenres() {
 
   return (
     <OnboardingLayout
-      step={2} totalSteps={5}
+      step={3} totalSteps={6}
       title="Genres you love"
-      subtitle="Select the kinds of stories you enjoy — your movie feed will be tailored to these"
-      onBack={() => navigate('/onboarding/languages')}
+      subtitle="Your vibe pre-selected these — adjust freely. Your movie feed will be tailored to your picks."
+      onBack={() => navigate('/onboarding/vibe')}
       onNext={handleNext}
       isLoading={isLoading}
       canProceed={true}
       nextLabel={selCount > 0 ? `Continue with ${selCount} genre${selCount > 1 ? 's' : ''}` : 'Skip genres'}
+      confidence={Math.min(35, selCount * 3)}
     >
       {error && (
         <div className="info-banner info-banner--error" style={{ marginBottom: 'var(--space-5)' }}>
