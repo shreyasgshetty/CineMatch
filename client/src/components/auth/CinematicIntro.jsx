@@ -150,8 +150,8 @@ export default function CinematicIntro({ onComplete }) {
         .studio-logo-text {
           font-family: var(--font-display), 'Cinzel', serif;
           font-weight: 900;
-          font-size: clamp(2.8rem, 7.5vw, 5.5rem);
-          letter-spacing: 0.28em;
+          font-size: clamp(1.8rem, 6.5vw, 5rem);
+          letter-spacing: 0.2em;
           color: #FFF;
           background: linear-gradient(135deg, #FFFFFF 0%, #F5E5BE 40%, #D4A843 75%, #F0C865 100%);
           -webkit-background-clip: text;
@@ -235,8 +235,41 @@ export default function CinematicIntro({ onComplete }) {
         }
 
         @keyframes taglineFadeIn {
-          0% { opacity: 0; letter-spacing: 0.2em; }
-          100% { opacity: 1; letter-spacing: 0.45em; }
+          0% { opacity: 0; letter-spacing: 0.15em; }
+          100% { opacity: 1; letter-spacing: 0.35em; }
+        }
+
+        /* Mobile Screen Adjustments */
+        @media (max-width: 600px) {
+          .studio-brand-container {
+            padding: 0 16px;
+            max-width: 100vw;
+          }
+
+          .studio-logo-text {
+            font-size: clamp(1.5rem, 6.8vw, 2.2rem);
+            letter-spacing: 0.14em;
+            margin-bottom: 8px;
+          }
+
+          .studio-tagline-text {
+            font-size: 0.62rem;
+            letter-spacing: 0.18em;
+          }
+
+          .tagline-line {
+            width: 20px;
+          }
+
+          .studio-pill-badge {
+            font-size: 0.58rem;
+            letter-spacing: 0.2em;
+            padding: 4px 10px;
+          }
+
+          .letterbox-bar {
+            height: 6vh;
+          }
         }
       `}</style>
     </div>
