@@ -12,6 +12,7 @@
 const express  = require('express');
 const router   = express.Router();
 const auth     = require('../middleware/auth');
+const optionalAuth = auth.optionalAuth;
 const Media    = require('../models/Media');
 const https    = require('https');
 
@@ -38,7 +39,7 @@ function tmdbGet(path, params = {}) {
 }
 
 // ── List Media ────────────────────────────────────────────────
-router.get('/', auth, async (req, res, next) => {
+router.get('/', optionalAuth, async (req, res, next) => {
   try {
     const {
       page = 1, limit = 20,

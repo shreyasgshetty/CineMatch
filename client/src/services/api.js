@@ -36,9 +36,11 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      localStorage.removeItem('cinematch_token');
-      localStorage.removeItem('cinematch_user');
-      window.location.href = '/login';
+      if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login') && !window.location.pathname.startsWith('/register')) {
+        localStorage.removeItem('cinematch_token');
+        localStorage.removeItem('cinematch_user');
+        window.location.href = '/login';
+      }
     }
     return Promise.reject(error);
   }
