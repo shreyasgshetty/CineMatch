@@ -73,18 +73,24 @@ app.use(cors({
 }));
 
 // ── Rate Limiting ─────────────────────────────────────────────
+const isDev = process.env.NODE_ENV === 'development';
+
 const apiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 200,
+  max: isDev ? 10000 : 300,
   message: { error: 'Too many requests. Please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => isDev, // Disable rate limiting in development
 });
 
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
-  max: 10, // Stricter for auth endpoints
+  max: isDev ? 10000 : 50,
   message: { error: 'Too many auth attempts. Please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  skip: () => isDev, // Disable rate limiting in development
 });
 
 // ── Body Parsing ──────────────────────────────────────────────
