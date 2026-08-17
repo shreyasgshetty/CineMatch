@@ -1,13 +1,11 @@
 /**
  * OnboardingDirectors — Step 6 of 6
  *
- * Features:
- *  1. Progressive Reveal — 5 directors shown initially; each like/love
- *     reveals 4 more from the pre-fetched pool.
- *  2. Like / Dislike — portrait click = like, ❤ = love, ✗ = dislike.
- *  3. Search to Add — search bar for directors not in pool.
- *  4. Taste Confidence Meter — passed to layout.
- *  5. Success screen with animated gold ring.
+ * Features & Fixes:
+ *  1. State Persistence — `prefs` saved to `sessionStorage` (`ob_director_prefs`).
+ *     Navigating Back / Next preserves all preferences and confidence scores.
+ *  2. Unreviewed Filter in Tinder Deck (if used) & Grid mode sync.
+ *  3. Progressive Reveal & Search to Add.
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -64,7 +62,6 @@ function DirectorCard({ person, pref, onPref, isNew }) {
   return (
     <div style={{ position: 'relative', textAlign: 'center', animation: isNew ? 'slideUp 0.35s ease both' : 'none' }}
       onMouseEnter={() => setHovered(true)} onMouseLeave={() => setHovered(false)}>
-      {/* Portrait */}
       <div
         onClick={() => onPref(person.tmdbId, liked ? PREF.NONE : PREF.LIKE)}
         style={{
@@ -91,7 +88,6 @@ function DirectorCard({ person, pref, onPref, isNew }) {
         )}
       </div>
 
-      {/* ❤ / ✗ micro-buttons */}
       <div style={{ display: 'flex', gap: 4, justifyContent: 'center', marginTop: 6, opacity: hovered || liked || disliked ? 1 : 0, transition: 'opacity 0.15s', pointerEvents: hovered || liked || disliked ? 'auto' : 'none' }}>
         <button type="button" title="Love"
           onClick={() => onPref(person.tmdbId, pref === PREF.LOVE ? PREF.LIKE : PREF.LOVE)}
@@ -214,12 +210,23 @@ export default function OnboardingDirectors() {
   const [visible, setVisible]       = useState([]);
   const [shownIds, setShownIds]     = useState(new Set());
   const [newIds, setNewIds]         = useState(new Set());
-  const [prefs, setPrefs]           = useState({});
+
+  // Restore prefs from sessionStorage so going back/forward preserves user picks!
+  const [prefs, setPrefs] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('ob_director_prefs') || '{}');
+    } catch { return {}; }
+  });
 
   const [isFetching, setIsFetching] = useState(true);
   const [isLoading, setIsLoading]   = useState(false);
   const [error, setError]           = useState('');
   const [success, setSuccess]       = useState(false);
+
+  // Save prefs to sessionStorage on every change
+  useEffect(() => {
+    sessionStorage.setItem('ob_director_prefs', JSON.stringify(prefs));
+  }, [prefs]);
 
   // ── Load directors ────────────────────────────────────────────
   useEffect(() => {
@@ -229,9 +236,14 @@ export default function OnboardingDirectors() {
       .then(res => {
         const people = res.data.people || [];
         setAllPeople(people);
-        const initial = people.slice(0, INITIAL_N);
-        setVisible(initial);
-        setShownIds(new Set(initial.map(p => String(p.tmdbId))));
+
+        const savedIds = new Set(Object.keys(prefs));
+        const initial = people.filter(p => savedIds.has(String(p.tmdbId)));
+        const remaining = people.filter(p => !savedIds.has(String(p.tmdbId)));
+        const combined = [...initial, ...remaining.slice(0, Math.max(INITIAL_N, INITIAL_N - initial.length))];
+
+        setVisible(combined);
+        setShownIds(new Set(combined.map(p => String(p.tmdbId))));
       })
       .catch(() => setError('Could not load director suggestions.'))
       .finally(() => setIsFetching(false));
@@ -281,7 +293,7 @@ export default function OnboardingDirectors() {
         .map(p => ({ tmdbId: p.tmdbId, name: p.name, preference: prefs[String(p.tmdbId)] }));
       const res = await onboardingApi.saveDirectors({ directors });
       if (res.data.user) updateUser(res.data.user);
-      ['ob_languages','ob_genres','ob_watched_ids','ob_vibe_genres','ob_vibe_id','ob_conf_genres','ob_conf_movies','ob_view_movies','ob_view_actors'].forEach(k => sessionStorage.removeItem(k));
+      ['ob_languages','ob_genres','ob_watched_ids','ob_vibe_genres','ob_vibe_id','ob_conf_genres','ob_conf_movies','ob_movie_states','ob_actor_prefs','ob_director_prefs','ob_view_movies','ob_view_actors'].forEach(k => sessionStorage.removeItem(k));
       setSuccess(true);
       setTimeout(() => navigate('/home'), 1800);
     } catch (err) {
@@ -293,10 +305,9 @@ export default function OnboardingDirectors() {
 
   const liked    = Object.values(prefs).filter(p => p === PREF.LIKE || p === PREF.LOVE).length;
   const disliked = Object.values(prefs).filter(p => p === PREF.DISLIKE).length;
-  const baseConf = Number(sessionStorage.getItem('ob_conf_movies') || 0) +
-                   Number(sessionStorage.getItem('ob_conf_genres')  || 0);
-  const dirConf  = Math.min(20, liked * 4 + disliked * 1);
-  const confidence = Math.min(100, 20 + baseConf + dirConf);
+  const baseConf   = Number(sessionStorage.getItem('ob_conf_actors') || 75);
+  const dirAdd     = Math.min(25, liked * 4 + disliked * 1);
+  const confidence = Math.min(100, baseConf + dirAdd);
   const existingIds = new Set(visible.map(p => String(p.tmdbId)));
 
   return (

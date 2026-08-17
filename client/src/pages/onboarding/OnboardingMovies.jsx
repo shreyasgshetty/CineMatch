@@ -1,14 +1,15 @@
 /**
  * OnboardingMovies — Step 4 of 6
  *
- * Features:
- *  1. Progressive Reveal — starts with 5 movies; each selection reveals
- *     3-4 similar items from the pre-fetched pool (matching genres/language),
- *     animating in with a slide-up effect.
- *  2. Grid / Tinder toggle — both modes share state.
- *  3. Search to Add — debounced search bar; results appear as dropdown,
- *     clicking a result adds it to visible pool and selects it.
- *  4. Taste Confidence Meter — passed as `confidence` to layout.
+ * Features & Fixes:
+ *  1. Thanos Snap Disintegration — Swiping right or clicking "Seen it" triggers
+ *     a golden dust particle explosion as the card flies right. Swiping left or "Pass"
+ *     triggers a red/ash dust particle explosion as the card flies left.
+ *  2. Sequential Rating Modal Popup — The rating modal pops up AFTER the card disintegrates
+ *     and leaves the deck.
+ *  3. State Persistence — `states` initialized from & saved to `sessionStorage` (`ob_movie_states`).
+ *  4. Downstream Step & Confidence Invalidation — Modifying selections invalidates downstream steps.
+ *  5. Progressive Reveal & Search to Add.
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -16,23 +17,22 @@ import { useNavigate } from 'react-router-dom';
 import { onboardingApi, mediaApi } from '../../services/api';
 import OnboardingLayout from '../../components/onboarding/OnboardingLayout';
 import SwipeCard from '../../components/onboarding/SwipeCard';
+import { resetDownstreamOnboarding } from '../../utils/onboardingHelper';
 
-const TMDB_IMG    = 'https://image.tmdb.org/t/p/w342';
-const CARD_W      = 280;
-const CARD_H      = 420;
-const INITIAL_N   = 5;   // items shown at start
-const REVEAL_N    = 4;   // items revealed on each selection
+const TMDB_IMG  = 'https://image.tmdb.org/t/p/w342';
+const CARD_W    = 280;
+const CARD_H    = 420;
+const INITIAL_N = 5;
+const REVEAL_N  = 4;
 
 // ─────────────────────────────────────────────────────────────────
 // Helpers
 // ─────────────────────────────────────────────────────────────────
-
-/** Return up to `n` items from `pool` that share genres or language with `seed` */
-function findSimilar(pool, seen, seed, n) {
+function findSimilar(pool, seenIds, seed, n) {
   if (!seed) return pool.slice(0, n);
   const { genres = [], originalLanguage } = seed;
   return pool
-    .filter(m => !seen.has(String(m._id)))
+    .filter(m => !seenIds.has(String(m._id)))
     .map(m => {
       let score = 0;
       if (m.originalLanguage === originalLanguage) score += 2;
@@ -50,9 +50,9 @@ function findSimilar(pool, seen, seed, n) {
 
 function StarRow({ value, onChange, size = 'md' }) {
   const [hovered, setHovered] = useState(0);
-  const fs = size === 'lg' ? '1.7rem' : '1rem';
+  const fs = size === 'lg' ? '1.8rem' : '1rem';
   return (
-    <div style={{ display: 'flex', gap: 4, justifyContent: 'center' }}>
+    <div style={{ display: 'flex', gap: 6, justifyContent: 'center' }}>
       {[1, 2, 3, 4, 5].map(s => (
         <button key={s} type="button"
           onClick={e => { e.stopPropagation(); onChange(s); }}
@@ -107,7 +107,7 @@ function MovieCard({ item, state, onToggleSeen, onRate, isNew }) {
         </div>
       )}
 
-      {/* "NEW" badge for progressively revealed items */}
+      {/* "NEW" badge */}
       {isNew && (
         <div style={{
           position: 'absolute', top: 8, left: 8, zIndex: 5,
@@ -183,6 +183,7 @@ function TinderMovieCard({ movie }) {
           <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontStyle: 'italic' }}>No Image</span>
         </div>
       )}
+
       <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, pointerEvents: 'none',
         background: 'linear-gradient(to top,rgba(0,0,0,0.98) 0%,rgba(0,0,0,0.6) 45%,transparent 100%)',
         padding: '56px 16px 18px' }}>
@@ -204,7 +205,74 @@ function TinderMovieCard({ movie }) {
   );
 }
 
-// ── Grid / Cards toggle ───────────────────────────────────────────
+// ── Rating Modal Popup (appears AFTER card Thanos-snaps away) ─────
+function RatingModal({ movie, onRate, onSkip }) {
+  if (!movie) return null;
+  return (
+    <div style={{
+      position: 'fixed', inset: 0, zIndex: 200,
+      background: 'rgba(10,12,16,0.82)', backdropFilter: 'blur(14px)',
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      padding: 20, animation: 'fadeIn 0.2s ease',
+    }}>
+      <div style={{
+        width: '100%', maxWidth: 360,
+        background: 'var(--bg-elevated)',
+        border: '1px solid rgba(212,168,67,0.25)',
+        borderRadius: 'var(--radius-xl)',
+        padding: '24px 20px 20px',
+        textAlign: 'center',
+        boxShadow: '0 24px 64px rgba(0,0,0,0.85), 0 0 40px rgba(212,168,67,0.15)',
+        animation: 'popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+      }}>
+        {movie.posterPath && (
+          <img src={`${TMDB_IMG}${movie.posterPath}`} alt=""
+            style={{ width: 70, height: 104, objectFit: 'cover', borderRadius: 10, margin: '0 auto 14px', boxShadow: '0 10px 30px rgba(0,0,0,0.7)', border: '1px solid rgba(255,255,255,0.1)' }} />
+        )}
+
+        <div style={{ fontSize: '0.62rem', fontWeight: 900, letterSpacing: '0.12em', color: 'var(--gold)', textTransform: 'uppercase', marginBottom: 4 }}>
+          YOU'VE SEEN THIS!
+        </div>
+
+        <div style={{ fontWeight: 800, fontSize: '1.15rem', color: '#fff', lineHeight: 1.2, marginBottom: 4 }}>
+          {movie.title}
+        </div>
+
+        <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 18 }}>
+          How would you rate this film?
+        </div>
+
+        <div style={{ marginBottom: 22 }}>
+          <StarRow value={0} onChange={onRate} size="lg" />
+        </div>
+
+        <button
+          type="button"
+          onClick={onSkip}
+          style={{
+            padding: '8px 20px', borderRadius: 'var(--radius-full)',
+            background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.12)',
+            color: 'var(--text-muted)', fontSize: '0.75rem', fontWeight: 600,
+            cursor: 'pointer', transition: 'all 0.15s',
+          }}
+          onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+          onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}
+        >
+          Skip rating
+        </button>
+      </div>
+
+      <style>{`
+        @keyframes popIn {
+          0%   { opacity: 0; transform: scale(0.85) translateY(20px); }
+          100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// ── View toggle ───────────────────────────────────────────────────
 function ViewToggle({ mode, onChange }) {
   const options = [
     { id: 'grid', label: 'Grid', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
@@ -292,13 +360,10 @@ function SearchBar({ onAdd, existingIds }) {
         border: '1px solid var(--border-default)',
         borderRadius: 'var(--radius-md)',
         padding: '8px 12px',
-        transition: 'border-color 0.15s',
       }}>
         {loading ? (
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2"
-            style={{ animation: 'spin 0.8s linear infinite', flexShrink: 0 }}>
-            <circle cx="12" cy="12" r="9" strokeOpacity="0.25"/>
-            <path d="M12 3a9 9 0 0 1 9 9" strokeLinecap="round"/>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" style={{ animation: 'spin 0.8s linear infinite', flexShrink: 0 }}>
+            <circle cx="12" cy="12" r="9" strokeOpacity="0.25"/><path d="M12 3a9 9 0 0 1 9 9" strokeLinecap="round"/>
           </svg>
         ) : (
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--text-muted)" strokeWidth="2" style={{ flexShrink: 0 }}>
@@ -328,14 +393,12 @@ function SearchBar({ onAdd, existingIds }) {
         )}
       </div>
 
-      {/* Dropdown */}
       {open && results.length > 0 && (
         <div style={{
           position: 'absolute', top: 'calc(100% + 6px)', left: 0, right: 0,
           background: 'var(--bg-elevated)', border: '1px solid var(--border-default)',
           borderRadius: 'var(--radius-md)', overflow: 'hidden', zIndex: 50,
-          boxShadow: '0 12px 40px rgba(0,0,0,0.6)',
-          animation: 'fadeIn 0.15s ease',
+          boxShadow: '0 12px 40px rgba(0,0,0,0.6)', animation: 'fadeIn 0.15s ease',
         }}>
           {results.map((item, i) => (
             <button
@@ -348,7 +411,6 @@ function SearchBar({ onAdd, existingIds }) {
                 background: added === item._id ? 'rgba(212,168,67,0.12)' : 'transparent',
                 cursor: 'pointer', textAlign: 'left',
                 borderBottom: i < results.length - 1 ? '1px solid var(--border-subtle)' : 'none',
-                transition: 'background 0.12s',
               }}
               onMouseEnter={e => e.currentTarget.style.background = 'rgba(255,255,255,0.04)'}
               onMouseLeave={e => e.currentTarget.style.background = added === item._id ? 'rgba(212,168,67,0.12)' : 'transparent'}
@@ -387,25 +449,35 @@ function SearchBar({ onAdd, existingIds }) {
 // ─────────────────────────────────────────────────────────────────
 export default function OnboardingMovies() {
   const navigate = useNavigate();
+  const cardRef  = useRef(null);
 
-  // All fetched movies (pool + visible)
-  const [allMovies, setAllMovies]     = useState([]);
-  // What's currently visible in the grid / tinder deck
-  const [visible, setVisible]         = useState([]);
-  // IDs that have been shown (so we don't re-reveal)
-  const [shownIds, setShownIds]       = useState(new Set());
-  // Track which IDs are newly revealed (for animation)
-  const [newIds, setNewIds]           = useState(new Set());
+  const [allMovies, setAllMovies]   = useState([]);
+  const [visible, setVisible]       = useState([]);
+  const [shownIds, setShownIds]     = useState(new Set());
+  const [newIds, setNewIds]         = useState(new Set());
 
-  const [states, setStates]         = useState({});   // { [id]: { seen, rating } }
+  // Restore states from sessionStorage
+  const [states, setStates] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('ob_movie_states') || '{}');
+    } catch { return {}; }
+  });
+
   const [isFetching, setIsFetching] = useState(true);
   const [isLoading, setIsLoading]   = useState(false);
   const [error, setError]           = useState('');
 
   // Tinder state
-  const [viewMode, setViewMode]         = useState(() => sessionStorage.getItem('ob_view_movies') || 'grid');
-  const [tinderIdx, setTinderIdx]       = useState(0);
-  const [ratingPending, setRatingPending] = useState(null);
+  const [viewMode, setViewMode]           = useState(() => sessionStorage.getItem('ob_view_movies') || 'grid');
+  const [ratingPending, setRatingPending] = useState(null); // movie object currently waiting for rating modal
+
+  // Save states to sessionStorage and invalidate downstream steps
+  useEffect(() => {
+    sessionStorage.setItem('ob_movie_states', JSON.stringify(states));
+    if (Object.keys(states).length > 0) {
+      resetDownstreamOnboarding(4);
+    }
+  }, [states]);
 
   // ── Load movies ───────────────────────────────────────────────
   useEffect(() => {
@@ -415,9 +487,14 @@ export default function OnboardingMovies() {
       .then(res => {
         const movies = res.data.media || [];
         setAllMovies(movies);
-        const initial = movies.slice(0, INITIAL_N);
-        setVisible(initial);
-        setShownIds(new Set(initial.map(m => String(m._id))));
+
+        const savedIds = new Set(Object.keys(states));
+        const initial = movies.filter(m => savedIds.has(String(m._id)));
+        const remaining = movies.filter(m => !savedIds.has(String(m._id)));
+        const combined = [...initial, ...remaining.slice(0, Math.max(INITIAL_N, INITIAL_N - initial.length))];
+
+        setVisible(combined);
+        setShownIds(new Set(combined.map(m => String(m._id))));
       })
       .catch(() => setError('Could not load suggestions. Check your connection.'))
       .finally(() => setIsFetching(false));
@@ -428,7 +505,7 @@ export default function OnboardingMovies() {
 
   const revealMore = useCallback((triggerMovie) => {
     const now = Date.now();
-    if (now - lastRevealRef.current < 300) return; // debounce rapid clicks
+    if (now - lastRevealRef.current < 300) return;
     lastRevealRef.current = now;
 
     setShownIds(prevShown => {
@@ -440,7 +517,7 @@ export default function OnboardingMovies() {
       const pickIds = new Set(picks.map(m => String(m._id)));
       setVisible(prev => [...prev, ...picks]);
       setNewIds(pickIds);
-      setTimeout(() => setNewIds(new Set()), 2000); // clear "new" badge after 2s
+      setTimeout(() => setNewIds(new Set()), 2000);
 
       return new Set([...prevShown, ...pickIds]);
     });
@@ -451,7 +528,6 @@ export default function OnboardingMovies() {
     setStates(prev => {
       const wasSeen = prev[id]?.seen;
       if (!wasSeen) {
-        // Just selected — reveal more similar movies
         const movie = visible.find(m => String(m._id) === String(id));
         revealMore(movie);
       }
@@ -466,7 +542,6 @@ export default function OnboardingMovies() {
   const handleAddFromSearch = useCallback((item) => {
     const idStr = String(item._id);
     if (shownIds.has(idStr)) {
-      // Already visible — just select it
       setStates(prev => ({ ...prev, [idStr]: { seen: true, rating: prev[idStr]?.rating || 0 } }));
       return;
     }
@@ -474,26 +549,37 @@ export default function OnboardingMovies() {
     setShownIds(prev => new Set([...prev, idStr]));
     setNewIds(new Set([idStr]));
     setTimeout(() => setNewIds(new Set()), 2000);
-    // Auto-select it
     setStates(prev => ({ ...prev, [idStr]: { seen: true, rating: 0 } }));
     revealMore(item);
   }, [shownIds, revealMore]);
 
-  // ── Tinder handlers ───────────────────────────────────────────
-  const tinderRight = useCallback((movie) => {
+  // ── Tinder handlers (Thanos Snap disintegration + Popup Modal) ─
+  const unreviewedMovies = visible.filter(m => {
+    const s = states[m._id];
+    return !s?.seen && !s?.passed;
+  });
+
+  const onSwipeRightCompleted = useCallback((movie) => {
+    // Mark seen in states so it leaves unreviewed pool
     setStates(prev => ({ ...prev, [movie._id]: { seen: true, rating: prev[movie._id]?.rating || 0 } }));
-    setRatingPending({ id: movie._id, title: movie.title });
-    setTinderIdx(i => i + 1);
+    // Pop up rating modal after card is gone
+    setRatingPending(movie);
     revealMore(movie);
   }, [revealMore]);
 
-  const tinderLeft = useCallback(() => {
-    setRatingPending(null);
-    setTinderIdx(i => i + 1);
+  const onSwipeLeftCompleted = useCallback((movie) => {
+    // Mark as passed
+    setStates(prev => ({ ...prev, [movie._id]: { seen: false, rating: 0, passed: true } }));
   }, []);
 
-  const tinderRate = useCallback((id, r) => {
-    setStates(prev => ({ ...prev, [id]: { ...prev[id], rating: r } }));
+  const handleTinderRate = useCallback((r) => {
+    if (!ratingPending) return;
+    const mId = ratingPending._id;
+    setStates(prev => ({ ...prev, [mId]: { seen: true, rating: r } }));
+    setRatingPending(null);
+  }, [ratingPending]);
+
+  const handleTinderSkipRating = useCallback(() => {
     setRatingPending(null);
   }, []);
 
@@ -501,20 +587,18 @@ export default function OnboardingMovies() {
   const handleViewChange = (mode) => {
     setViewMode(mode);
     sessionStorage.setItem('ob_view_movies', mode);
-    if (mode === 'tinder') setTinderIdx(0);
   };
 
   // ── Confidence score ──────────────────────────────────────────
   const seenItems  = Object.entries(states).filter(([, s]) => s.seen);
   const ratedCount = seenItems.filter(([, s]) => s.rating > 0).length;
   const seenCount  = seenItems.length;
-  // genres + languages already added up to ~35%; now movies add up to 30%
-  const baseConf   = Number(sessionStorage.getItem('ob_conf_genres') || 0);
-  const movieConf  = Math.min(30, seenCount * 4 + ratedCount * 2);
-  const confidence = Math.min(65, baseConf + movieConf);
 
-  // Persist for subsequent steps
-  if (!isFetching) sessionStorage.setItem('ob_conf_movies', String(movieConf));
+  const baseConf   = Number(sessionStorage.getItem('ob_conf_genres') || 35);
+  const movieAdd   = Math.min(30, seenCount * 4 + ratedCount * 2);
+  const confidence = Math.min(70, baseConf + movieAdd);
+
+  if (!isFetching) sessionStorage.setItem('ob_conf_movies', String(confidence));
 
   // ── Continue ──────────────────────────────────────────────────
   const handleNext = async () => {
@@ -533,11 +617,11 @@ export default function OnboardingMovies() {
     } finally { setIsLoading(false); }
   };
 
-  // ── Tinder deck refs ──────────────────────────────────────────
-  const card0    = visible[tinderIdx];
-  const card1    = visible[tinderIdx + 1];
-  const card2    = visible[tinderIdx + 2];
-  const tinderDone = !isFetching && tinderIdx >= visible.length;
+  // Deck cards
+  const topCard    = unreviewedMovies[0];
+  const nextCard   = unreviewedMovies[1];
+  const backCard   = unreviewedMovies[2];
+  const tinderDone = !isFetching && unreviewedMovies.length === 0;
 
   const existingIds = new Set(visible.map(m => String(m._id)));
 
@@ -558,6 +642,13 @@ export default function OnboardingMovies() {
       nextLabel={seenCount > 0 ? `Continue with ${ratedCount} rating${ratedCount !== 1 ? 's' : ''}` : 'Skip for now'}
       confidence={confidence}
     >
+      {/* ── Rating Popup Modal (pops AFTER card Thanos-snaps away) ── */}
+      <RatingModal
+        movie={ratingPending}
+        onRate={handleTinderRate}
+        onSkip={handleTinderSkipRating}
+      />
+
       {error && (
         <div className="info-banner info-banner--error" style={{ marginBottom: 'var(--space-5)' }}>
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -632,7 +723,9 @@ export default function OnboardingMovies() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-6)' }}>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
             {tinderDone ? 'All films reviewed' : (
-              <><span style={{ color: 'var(--gold)', fontWeight: 700 }}>{tinderIdx + 1}</span> of {visible.length}</>
+              <>
+                Unreviewed: <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{unreviewedMovies.length}</span>
+              </>
             )}
           </div>
 
@@ -650,39 +743,51 @@ export default function OnboardingMovies() {
           ) : (
             <>
               <div style={{ position: 'relative', width: CARD_W, height: CARD_H }}>
-                {card2 && (
+                {/* Back card */}
+                {backCard && (
                   <div style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', transform: 'rotate(5deg) scale(0.91) translateY(-18px)', filter: 'brightness(0.28)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-                    <TinderMovieCard movie={card2} />
+                    <TinderMovieCard movie={backCard} />
                   </div>
                 )}
-                {card1 && (
+
+                {/* Middle card */}
+                {nextCard && (
                   <div style={{ position: 'absolute', inset: 0, zIndex: 2, pointerEvents: 'none', transform: 'rotate(-3.5deg) scale(0.95) translateY(-9px)', filter: 'brightness(0.45)', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-                    <TinderMovieCard movie={card1} />
+                    <TinderMovieCard movie={nextCard} />
                   </div>
                 )}
-                {card0 && (
+
+                {/* Top card — swipeable with Thanos Snap */}
+                {topCard && (
                   <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
-                    <SwipeCard key={card0._id} onSwipeRight={() => tinderRight(card0)} onSwipeLeft={tinderLeft} rightLabel="SEEN ✓" leftLabel="✗ PASS">
-                      <TinderMovieCard movie={card0} />
+                    <SwipeCard
+                      ref={cardRef}
+                      key={topCard._id}
+                      onSwipeRight={() => onSwipeRightCompleted(topCard)}
+                      onSwipeLeft={() => onSwipeLeftCompleted(topCard)}
+                      rightLabel="SEEN ✓"
+                      leftLabel="✗ PASS"
+                    >
+                      <TinderMovieCard movie={topCard} />
                     </SwipeCard>
                   </div>
                 )}
               </div>
 
-              {ratingPending ? (
-                <div style={{ width: '100%', maxWidth: CARD_W, background: 'rgba(212,168,67,0.06)', border: '1px solid rgba(212,168,67,0.25)', borderRadius: 'var(--radius-lg)', padding: '14px 20px', textAlign: 'center', animation: 'fadeIn 0.25s ease' }}>
-                  <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.08em' }}>You've seen this! Rate it?</div>
-                  <div style={{ fontWeight: 700, fontSize: '0.88rem', color: '#fff', marginBottom: 10, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{ratingPending.title}</div>
-                  <StarRow value={states[ratingPending.id]?.rating || 0} onChange={r => tinderRate(ratingPending.id, r)} size="lg" />
-                  <button type="button" onClick={() => setRatingPending(null)} style={{ marginTop: 10, background: 'none', border: 'none', color: 'var(--text-disabled)', fontSize: '0.7rem', cursor: 'pointer' }}>Skip rating</button>
-                </div>
-              ) : (
-                <div style={{ display: 'flex', alignItems: 'center', gap: 28, justifyContent: 'center' }}>
-                  <TinderBtn onClick={tinderLeft} color="#ef4444" glowColor="#ef444444" label="Pass" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>} />
-                  <div style={{ fontSize: '0.6rem', color: 'var(--text-disabled)', textAlign: 'center', lineHeight: 1.5 }}>drag card<br/>or tap</div>
-                  <TinderBtn onClick={() => card0 && tinderRight(card0)} color="#22c55e" glowColor="#22c55e44" label="Seen it" icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>} />
-                </div>
-              )}
+              {/* Action buttons trigger ref methods on SwipeCard */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: 28, justifyContent: 'center' }}>
+                <TinderBtn
+                  onClick={() => cardRef.current?.swipeLeft()}
+                  color="#ef4444" glowColor="#ef444444" label="Pass"
+                  icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
+                />
+                <div style={{ fontSize: '0.6rem', color: 'var(--text-disabled)', textAlign: 'center', lineHeight: 1.5 }}>drag card<br/>or tap</div>
+                <TinderBtn
+                  onClick={() => cardRef.current?.swipeRight()}
+                  color="#22c55e" glowColor="#22c55e44" label="Seen it"
+                  icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                />
+              </div>
             </>
           )}
         </div>

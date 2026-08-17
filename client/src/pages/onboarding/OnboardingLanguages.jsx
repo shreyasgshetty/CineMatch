@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { LANGUAGES } from '../../utils/config';
 import { onboardingApi } from '../../services/api';
 import OnboardingLayout from '../../components/onboarding/OnboardingLayout';
+import { resetDownstreamOnboarding } from '../../utils/onboardingHelper';
 
 const TMDB_IMG = 'https://image.tmdb.org/t/p/w154';
 
@@ -26,13 +27,13 @@ const LANG_GRADIENT = {
 
 // Decorative pattern overlay for cards with no posters
 const LANG_PATTERN_COLOR = {
-  kn: 'rgba(160,52,26,0.5)',  te: 'rgba(26,122,82,0.5)',
-  ta: 'rgba(30,80,160,0.5)',  ml: 'rgba(26,112,68,0.5)',
+  kn: 'rgba(160,52,26,0.5)', te: 'rgba(26,122,82,0.5)',
+  ta: 'rgba(30,80,160,0.5)', ml: 'rgba(26,112,68,0.5)',
   hi: 'rgba(154,26,122,0.5)', bn: 'rgba(98,40,168,0.5)',
-  mr: 'rgba(160,74,0,0.5)',   pa: 'rgba(192,112,0,0.5)',
-  en: 'rgba(30,50,72,0.5)',   ko: 'rgba(154,24,24,0.5)',
-  ja: 'rgba(158,24,96,0.5)',  zh: 'rgba(168,26,26,0.5)',
-  es: 'rgba(160,72,0,0.5)',   fr: 'rgba(26,48,168,0.5)',
+  mr: 'rgba(160,74,0,0.5)', pa: 'rgba(192,112,0,0.5)',
+  en: 'rgba(30,50,72,0.5)', ko: 'rgba(154,24,24,0.5)',
+  ja: 'rgba(158,24,96,0.5)', zh: 'rgba(168,26,26,0.5)',
+  es: 'rgba(160,72,0,0.5)', fr: 'rgba(26,48,168,0.5)',
 };
 
 function PosterCollage({ posters, gradient, patternColor }) {
@@ -137,7 +138,7 @@ function LanguageCard({ lang, isSelected, onToggle, posters }) {
           boxShadow: '0 0 12px rgba(212,168,67,0.6)',
         }}>
           <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#0d0a02" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
-            <polyline points="20 6 9 17 4 12"/>
+            <polyline points="20 6 9 17 4 12" />
           </svg>
         </div>
       )}
@@ -167,20 +168,29 @@ function LanguageCard({ lang, isSelected, onToggle, posters }) {
 }
 
 export default function OnboardingLanguages() {
-  const navigate   = useNavigate();
-  const [selected, setSelected]   = useState([]);
-  const [previews, setPreviews]   = useState({});
+  const navigate = useNavigate();
+  const [selected, setSelected] = useState(() => JSON.parse(sessionStorage.getItem('ob_languages') || '[]'));
+  const [previews, setPreviews] = useState({});
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError]         = useState('');
+  const [error, setError] = useState('');
 
   useEffect(() => {
     onboardingApi.getLanguagePreviews()
       .then(res => setPreviews(res.data.previews || {}))
-      .catch(() => {}); // silently fall back to gradients
+      .catch(() => { }); // silently fall back to gradients
   }, []);
 
+  const langConf = selected.length > 0 ? Math.min(20, Math.max(10, selected.length * 5)) : 0;
+
   const toggle = (code) => {
-    setSelected(prev => prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code]);
+    setSelected(prev => {
+      const next = prev.includes(code) ? prev.filter(c => c !== code) : [...prev, code];
+      sessionStorage.setItem('ob_languages', JSON.stringify(next));
+      const conf = next.length > 0 ? Math.min(20, Math.max(10, next.length * 5)) : 0;
+      sessionStorage.setItem('ob_conf_lang', String(conf));
+      resetDownstreamOnboarding(1);
+      return next;
+    });
     if (error) setError('');
   };
 
@@ -197,7 +207,7 @@ export default function OnboardingLanguages() {
   };
 
   const indian = LANGUAGES.filter(l => l.region === 'Indian');
-  const intl   = LANGUAGES.filter(l => l.region === 'International');
+  const intl = LANGUAGES.filter(l => l.region === 'International');
 
   return (
     <OnboardingLayout
@@ -208,10 +218,11 @@ export default function OnboardingLanguages() {
       isLoading={isLoading}
       canProceed={selected.length > 0}
       nextLabel={selected.length > 0 ? `Continue with ${selected.length} language${selected.length > 1 ? 's' : ''}` : 'Select a language'}
+      confidence={langConf}
     >
       {error && (
         <div className="info-banner info-banner--error" style={{ marginBottom: 'var(--space-5)' }}>
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10" /><line x1="12" y1="8" x2="12" y2="12" /><line x1="12" y1="16" x2="12.01" y2="16" /></svg>
           {error}
         </div>
       )}

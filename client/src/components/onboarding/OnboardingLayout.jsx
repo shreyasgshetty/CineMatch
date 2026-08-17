@@ -18,6 +18,7 @@ export default function OnboardingLayout({
   confidence = 0,   // 0–100 taste accuracy score
   children,
 }) {
+  const [showTasteInfo, setShowTasteInfo] = useState(false);
   const progress = (step / totalSteps) * 100;
 
   // Clamp confidence to 0-100 and round
@@ -174,58 +175,125 @@ export default function OnboardingLayout({
 
           {/* ── Taste Confidence Meter ────────────────────────── */}
           {pct > 0 && (
-            <div style={{
-              marginBottom: 'var(--space-3)',
-              padding: '8px 12px',
-              background: 'rgba(212,168,67,0.04)',
-              border: '1px solid rgba(212,168,67,0.10)',
-              borderRadius: 'var(--radius-md)',
-              display: 'flex', alignItems: 'center', gap: 10,
-            }}>
-              {/* Pulse dot */}
+            <div style={{ marginBottom: 'var(--space-3)' }}>
               <div style={{
-                width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
-                background: pct > 60 ? 'var(--gold)' : 'rgba(212,168,67,0.6)',
-                boxShadow: pct > 60 ? '0 0 6px rgba(212,168,67,0.8)' : 'none',
-                animation: 'pulse 2s ease infinite',
-              }} />
-
-              <div style={{ flex: 1, minWidth: 0 }}>
+                padding: '8px 12px',
+                background: 'rgba(212,168,67,0.04)',
+                border: '1px solid rgba(212,168,67,0.10)',
+                borderRadius: 'var(--radius-md)',
+                display: 'flex', alignItems: 'center', gap: 10,
+              }}>
+                {/* Pulse dot */}
                 <div style={{
-                  display: 'flex', justifyContent: 'space-between',
-                  fontSize: '0.6rem', color: 'var(--text-muted)',
-                  marginBottom: 4, letterSpacing: '0.03em',
-                }}>
-                  <span style={{ fontWeight: 600, color: 'rgba(212,168,67,0.75)' }}>Taste accuracy</span>
-                  <span style={{ fontWeight: 800, color: pct > 60 ? 'var(--gold)' : 'rgba(212,168,67,0.7)' }}>{pct}%</span>
-                </div>
+                  width: 7, height: 7, borderRadius: '50%', flexShrink: 0,
+                  background: pct > 60 ? 'var(--gold)' : 'rgba(212,168,67,0.6)',
+                  boxShadow: pct > 60 ? '0 0 6px rgba(212,168,67,0.8)' : 'none',
+                  animation: 'pulse 2s ease infinite',
+                }} />
 
-                {/* Progress track */}
-                <div style={{
-                  height: 4, borderRadius: 99,
-                  background: 'rgba(255,255,255,0.06)',
-                  overflow: 'hidden',
-                }}>
+                <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
-                    height: '100%',
-                    width: `${pct}%`,
-                    borderRadius: 99,
-                    background: pct > 70
-                      ? 'var(--gradient-gold)'
-                      : 'linear-gradient(90deg,rgba(212,168,67,0.4),rgba(212,168,67,0.75))',
-                    transition: 'width 0.5s cubic-bezier(0.25,0.46,0.45,0.94)',
-                    boxShadow: pct > 50 ? '0 0 8px rgba(212,168,67,0.4)' : 'none',
-                  }} />
+                    display: 'flex', justifyContent: 'space-between',
+                    fontSize: '0.6rem', color: 'var(--text-muted)',
+                    marginBottom: 4, letterSpacing: '0.03em',
+                  }}>
+                    <span style={{ fontWeight: 600, color: 'rgba(212,168,67,0.75)' }}>Taste accuracy</span>
+                    <span style={{ fontWeight: 800, color: pct > 60 ? 'var(--gold)' : 'rgba(212,168,67,0.7)' }}>{pct}%</span>
+                  </div>
+
+                  {/* Progress track */}
+                  <div style={{
+                    height: 4, borderRadius: 99,
+                    background: 'rgba(255,255,255,0.06)',
+                    overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      height: '100%',
+                      width: `${pct}%`,
+                      borderRadius: 99,
+                      background: pct > 70
+                        ? 'var(--gradient-gold)'
+                        : 'linear-gradient(90deg,rgba(212,168,67,0.4),rgba(212,168,67,0.75))',
+                      transition: 'width 0.5s cubic-bezier(0.25,0.46,0.45,0.94)',
+                      boxShadow: pct > 50 ? '0 0 8px rgba(212,168,67,0.4)' : 'none',
+                    }} />
+                  </div>
                 </div>
+
+                <span style={{
+                  fontSize: '0.58rem', color: 'var(--text-disabled)',
+                  whiteSpace: 'nowrap', flexShrink: 0,
+                  fontStyle: 'italic',
+                }}>
+                  {confidenceLabel}
+                </span>
               </div>
 
-              <span style={{
-                fontSize: '0.58rem', color: 'var(--text-disabled)',
-                whiteSpace: 'nowrap', flexShrink: 0,
-                fontStyle: 'italic',
+              {/* ── Taste Accuracy Explanation Info Section ───── */}
+              <div style={{
+                marginTop: 6,
+                padding: '6px 12px',
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid rgba(255,255,255,0.06)',
+                borderRadius: 'var(--radius-sm)',
+                fontSize: '0.62rem',
+                color: 'var(--text-muted)',
+                lineHeight: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                gap: 8,
               }}>
-                {confidenceLabel}
-              </span>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--gold)" strokeWidth="2" style={{ flexShrink: 0 }}><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+                  <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                    <strong style={{ color: 'var(--text-secondary)' }}>How it works:</strong> Each selection trains our AI on your movie DNA — higher accuracy unlocks 95%+ match scoring.
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowTasteInfo(!showTasteInfo)}
+                  style={{
+                    background: 'none', border: 'none', color: 'var(--gold)',
+                    fontSize: '0.62rem', fontWeight: 700, cursor: 'pointer',
+                    textDecoration: 'underline', padding: '0 2px', flexShrink: 0,
+                  }}
+                >
+                  {showTasteInfo ? 'Hide details' : 'How is this calculated?'}
+                </button>
+              </div>
+
+              {/* Expandable Breakdown Card */}
+              {showTasteInfo && (
+                <div style={{
+                  marginTop: 6, padding: '10px 14px',
+                  background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
+                  borderRadius: 'var(--radius-md)', fontSize: '0.68rem', color: 'var(--text-secondary)',
+                  lineHeight: 1.6, boxShadow: 'var(--shadow-md)',
+                }}>
+                  <div style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <span>🎯 How Taste Accuracy Accumulates</span>
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 8 }}>
+                    <div style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '0.62rem' }}>🌐 Languages & Vibe (0–30%)</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>Filters regional base & cinematic mood</div>
+                    </div>
+                    <div style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '0.62rem' }}>🎭 Genres (30–45%)</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>Maps storytelling & theme preferences</div>
+                    </div>
+                    <div style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '0.62rem' }}>🎬 Films & Ratings (45–70%)</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>Teaches specific film likes & star ratings</div>
+                    </div>
+                    <div style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
+                      <div style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '0.62rem' }}>👥 Actors & Directors (70–100%)</div>
+                      <div style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>Pins down star & auteur filmmaker style</div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

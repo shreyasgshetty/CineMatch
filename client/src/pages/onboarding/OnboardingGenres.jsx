@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { GENRES } from '../../utils/config';
 import { onboardingApi } from '../../services/api';
 import OnboardingLayout from '../../components/onboarding/OnboardingLayout';
+import { resetDownstreamOnboarding } from '../../utils/onboardingHelper';
 
 const TMDB_IMG = 'https://image.tmdb.org/t/p/w154';
 
@@ -139,24 +140,35 @@ function GenreCard({ genre, isSelected, onToggle, posters }) {
 
 export default function OnboardingGenres() {
   const navigate = useNavigate();
-  const [selected, setSelected]   = useState([]);
+  const [selected, setSelected] = useState(() => {
+    const saved = JSON.parse(sessionStorage.getItem('ob_genres') || '[]');
+    if (saved.length > 0) return saved;
+    return JSON.parse(sessionStorage.getItem('ob_vibe_genres') || '[]');
+  });
   const [previews, setPreviews]   = useState({});
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError]         = useState('');
 
   useEffect(() => {
-    // Pre-select genres from vibe choice
-    const vibeGenres = JSON.parse(sessionStorage.getItem('ob_vibe_genres') || '[]');
-    if (vibeGenres.length > 0) setSelected(vibeGenres);
-
     const languages = JSON.parse(sessionStorage.getItem('ob_languages') || '[]').join(',');
     onboardingApi.getGenrePreviews({ languages })
       .then(res => setPreviews(res.data.previews || {}))
       .catch(() => {});
   }, []);
 
+  const langConf = Number(sessionStorage.getItem('ob_conf_lang') || 15);
+  const vibeConf = Number(sessionStorage.getItem('ob_conf_vibe') || (sessionStorage.getItem('ob_vibe_id') ? 25 : 15));
+  const baseConf = Math.max(langConf, vibeConf);
+  const genreConf = Math.min(45, baseConf + selected.length * 3);
+
   const toggle = (name) => {
-    setSelected(prev => prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name]);
+    setSelected(prev => {
+      const next = prev.includes(name) ? prev.filter(n => n !== name) : [...prev, name];
+      sessionStorage.setItem('ob_genres', JSON.stringify(next));
+      sessionStorage.setItem('ob_conf_genres', String(Math.min(45, baseConf + next.length * 3)));
+      resetDownstreamOnboarding(3);
+      return next;
+    });
     if (error) setError('');
   };
 
@@ -167,8 +179,7 @@ export default function OnboardingGenres() {
       const genrePayload = Object.fromEntries(selected.map(name => [name, 'like']));
       await onboardingApi.saveGenres({ genres: genrePayload });
       sessionStorage.setItem('ob_genres', JSON.stringify(selected));
-      // Persist confidence contribution for downstream steps
-      sessionStorage.setItem('ob_conf_genres', String(Math.min(15, selected.length * 3)));
+      sessionStorage.setItem('ob_conf_genres', String(genreConf));
       navigate('/onboarding/movies');
     } catch (err) {
       setError(err.response?.data?.message || 'Something went wrong.');
@@ -187,7 +198,7 @@ export default function OnboardingGenres() {
       isLoading={isLoading}
       canProceed={true}
       nextLabel={selCount > 0 ? `Continue with ${selCount} genre${selCount > 1 ? 's' : ''}` : 'Skip genres'}
-      confidence={Math.min(35, selCount * 3)}
+      confidence={genreConf}
     >
       {error && (
         <div className="info-banner info-banner--error" style={{ marginBottom: 'var(--space-5)' }}>

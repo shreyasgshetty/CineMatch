@@ -1,14 +1,13 @@
 /**
  * OnboardingActors — Step 5 of 6
  *
- * Features:
- *  1. Progressive Reveal — starts with 5 actors; each selection reveals
- *     3-4 more from the pre-fetched pool.
- *  2. Like / Dislike — grid cards have ❤ Love / 👎 Not-for-me buttons.
- *     signal stored as: love | like | dislike (neutral = never interacted)
- *  3. Grid / Tinder toggle — swipe right = like, swipe left = dislike signal.
- *  4. Search to Add — search bar with dropdown for actors not in pool.
- *  5. Taste Confidence Meter — passed as `confidence` to layout.
+ * Features & Fixes:
+ *  1. State Persistence — `prefs` saved to `sessionStorage` (`ob_actor_prefs`).
+ *     Navigating Back/Next keeps all likes/dislikes and confidence intact.
+ *  2. Unreviewed Filter in Tinder Deck — Cards mode deck automatically filters out
+ *     actors already decided (liked/disliked/loved) in Grid or Cards mode.
+ *  3. Like / Dislike — Grid cards have ❤ Love / 👎 Not-for-me buttons.
+ *  4. Progressive Reveal & Search to Add.
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -16,6 +15,7 @@ import { useNavigate } from 'react-router-dom';
 import { onboardingApi, mediaApi } from '../../services/api';
 import OnboardingLayout from '../../components/onboarding/OnboardingLayout';
 import SwipeCard from '../../components/onboarding/SwipeCard';
+import { resetDownstreamOnboarding } from '../../utils/onboardingHelper';
 
 const TMDB_FACE    = 'https://image.tmdb.org/t/p/w185';
 const ACTOR_CARD_W = 280;
@@ -23,7 +23,6 @@ const ACTOR_CARD_H = 340;
 const INITIAL_N    = 5;
 const REVEAL_N     = 4;
 
-// Preference constants
 const PREF = { LOVE: 'love', LIKE: 'like', DISLIKE: 'dislike', NONE: null };
 
 // ─────────────────────────────────────────────────────────────────
@@ -37,7 +36,6 @@ function findSimilarPeople(pool, shownIds) {
 // Sub-components
 // ─────────────────────────────────────────────────────────────────
 
-// ── Grid circle card with Like/Dislike ───────────────────────────
 function PersonCard({ person, pref, onPref, isNew }) {
   const [hovered, setHovered] = useState(false);
   const liked    = pref === PREF.LIKE || pref === PREF.LOVE;
@@ -92,50 +90,42 @@ function PersonCard({ person, pref, onPref, isNew }) {
           </div>
         )}
 
-        {/* NEW badge */}
         {isNew && (
           <div style={{ position: 'absolute', top: 4, right: 4, fontSize: '0.45rem', fontWeight: 900, padding: '1px 5px', borderRadius: 99, background: 'rgba(212,168,67,0.9)', color: '#0d0a02', textTransform: 'uppercase', letterSpacing: '0.05em' }}>NEW</div>
         )}
       </div>
 
-      {/* ❤ Love / 👎 Dislike micro-buttons — appear on hover or if pref set */}
+      {/* ❤ / 👎 micro buttons */}
       <div style={{
         display: 'flex', gap: 4, justifyContent: 'center', marginTop: 6,
         opacity: hovered || liked || disliked ? 1 : 0,
         transition: 'opacity 0.15s',
         pointerEvents: hovered || liked || disliked ? 'auto' : 'none',
       }}>
-        {/* Love */}
         <button
-          type="button"
-          title="Love"
+          type="button" title="Love"
           onClick={() => onPref(person.tmdbId, pref === PREF.LOVE ? PREF.LIKE : PREF.LOVE)}
           style={{
             width: 24, height: 24, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0,
             background: loved ? '#ec4899' : 'rgba(255,255,255,0.07)',
             boxShadow: loved ? '0 0 8px rgba(236,72,153,0.6)' : 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.15s',
-            transform: loved ? 'scale(1.15)' : 'scale(1)',
+            transition: 'all 0.15s', transform: loved ? 'scale(1.15)' : 'scale(1)',
           }}
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill={loved ? '#fff' : 'rgba(236,72,153,0.8)'} stroke={loved ? 'none' : 'rgba(236,72,153,0.8)'} strokeWidth="1.5">
             <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/>
           </svg>
         </button>
-
-        {/* Dislike */}
         <button
-          type="button"
-          title="Not for me"
+          type="button" title="Not for me"
           onClick={() => onPref(person.tmdbId, pref === PREF.DISLIKE ? PREF.NONE : PREF.DISLIKE)}
           style={{
             width: 24, height: 24, borderRadius: '50%', border: 'none', cursor: 'pointer', padding: 0,
             background: disliked ? '#ef4444' : 'rgba(255,255,255,0.07)',
             boxShadow: disliked ? '0 0 8px rgba(239,68,68,0.5)' : 'none',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.15s',
-            transform: disliked ? 'scale(1.15)' : 'scale(1)',
+            transition: 'all 0.15s', transform: disliked ? 'scale(1.15)' : 'scale(1)',
           }}
         >
           <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke={disliked ? '#fff' : 'rgba(239,68,68,0.8)'} strokeWidth="2.5" strokeLinecap="round">
@@ -198,7 +188,7 @@ function TinderActorCard({ person }) {
   );
 }
 
-// ── Grid / Cards toggle ───────────────────────────────────────────
+// ── View toggle ───────────────────────────────────────────────────
 function ViewToggle({ mode, onChange }) {
   const options = [
     { id: 'grid', label: 'Grid', icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg> },
@@ -219,7 +209,6 @@ function ViewToggle({ mode, onChange }) {
   );
 }
 
-// ── Tinder button ─────────────────────────────────────────────────
 function TinderBtn({ onClick, color, glowColor, label, icon, disabled }) {
   const [hov, setHov] = useState(false);
   return (
@@ -248,7 +237,6 @@ function SearchBar({ onAdd, existingIds }) {
   const [open, setOpen]       = useState(false);
   const [added, setAdded]     = useState(null);
   const debounceRef = useRef(null);
-  const inputRef    = useRef(null);
 
   const handleChange = (e) => {
     const q = e.target.value;
@@ -286,7 +274,7 @@ function SearchBar({ onAdd, existingIds }) {
             <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </svg>
         )}
-        <input ref={inputRef} value={query} onChange={handleChange}
+        <input value={query} onChange={handleChange}
           onFocus={() => results.length > 0 && setOpen(true)}
           onBlur={() => setTimeout(() => setOpen(false), 180)}
           placeholder="Don't see your favourite? Search actors…"
@@ -335,14 +323,19 @@ function SearchBar({ onAdd, existingIds }) {
 // ─────────────────────────────────────────────────────────────────
 export default function OnboardingActors() {
   const navigate = useNavigate();
+  const cardRef  = useRef(null);
 
   const [allPeople, setAllPeople]   = useState([]);
   const [visible, setVisible]       = useState([]);
   const [shownIds, setShownIds]     = useState(new Set());
   const [newIds, setNewIds]         = useState(new Set());
 
-  // prefs: { [tmdbId]: 'love' | 'like' | 'dislike' | null }
-  const [prefs, setPrefs]           = useState({});
+  // Restore prefs from sessionStorage so going back/forward preserves user picks!
+  const [prefs, setPrefs] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem('ob_actor_prefs') || '{}');
+    } catch { return {}; }
+  });
 
   const [isFetching, setIsFetching] = useState(true);
   const [isLoading, setIsLoading]   = useState(false);
@@ -350,7 +343,14 @@ export default function OnboardingActors() {
 
   // Tinder state
   const [viewMode, setViewMode]   = useState(() => sessionStorage.getItem('ob_view_actors') || 'grid');
-  const [tinderIdx, setTinderIdx] = useState(0);
+
+  // Save prefs to sessionStorage on every update and invalidate downstream Directors step
+  useEffect(() => {
+    sessionStorage.setItem('ob_actor_prefs', JSON.stringify(prefs));
+    if (Object.keys(prefs).length > 0) {
+      resetDownstreamOnboarding(5);
+    }
+  }, [prefs]);
 
   // ── Load actors ───────────────────────────────────────────────
   useEffect(() => {
@@ -360,9 +360,14 @@ export default function OnboardingActors() {
       .then(res => {
         const people = res.data.people || [];
         setAllPeople(people);
-        const initial = people.slice(0, INITIAL_N);
-        setVisible(initial);
-        setShownIds(new Set(initial.map(p => String(p.tmdbId))));
+
+        const savedIds = new Set(Object.keys(prefs));
+        const initial = people.filter(p => savedIds.has(String(p.tmdbId)));
+        const remaining = people.filter(p => !savedIds.has(String(p.tmdbId)));
+        const combined = [...initial, ...remaining.slice(0, Math.max(INITIAL_N, INITIAL_N - initial.length))];
+
+        setVisible(combined);
+        setShownIds(new Set(combined.map(p => String(p.tmdbId))));
       })
       .catch(() => setError('Could not load actor suggestions.'))
       .finally(() => setIsFetching(false));
@@ -384,11 +389,9 @@ export default function OnboardingActors() {
   // ── Preference setter ─────────────────────────────────────────
   const setPref = useCallback((tmdbId, pref) => {
     setPrefs(prev => {
-      const next = { ...prev, [String(tmdbId)]: pref };
-      // If this is a positive signal (like/love) and was previously none, reveal more
-      const wasPosive = prev[String(tmdbId)] === PREF.LIKE || prev[String(tmdbId)] === PREF.LOVE;
-      if (!wasPosive && (pref === PREF.LIKE || pref === PREF.LOVE)) revealMore();
-      return next;
+      const wasPositive = prev[String(tmdbId)] === PREF.LIKE || prev[String(tmdbId)] === PREF.LOVE;
+      if (!wasPositive && (pref === PREF.LIKE || pref === PREF.LOVE)) revealMore();
+      return { ...prev, [String(tmdbId)]: pref };
     });
   }, [revealMore]);
 
@@ -406,15 +409,15 @@ export default function OnboardingActors() {
     setPref(idStr, PREF.LIKE);
   }, [shownIds, setPref]);
 
-  // ── Tinder handlers ───────────────────────────────────────────
+  // ── Tinder deck (only UNREVIEWED actors) ─────────────────────
+  const unreviewedPeople = visible.filter(p => !prefs[String(p.tmdbId)]);
+
   const tinderRight = useCallback((person) => {
     setPref(person.tmdbId, PREF.LIKE);
-    setTinderIdx(i => i + 1);
   }, [setPref]);
 
   const tinderLeft = useCallback((person) => {
     setPref(person.tmdbId, PREF.DISLIKE);
-    setTinderIdx(i => i + 1);
   }, [setPref]);
 
   const handleViewChange = (mode) => {
@@ -439,16 +442,17 @@ export default function OnboardingActors() {
   // ── Confidence ────────────────────────────────────────────────
   const liked    = Object.values(prefs).filter(p => p === PREF.LIKE || p === PREF.LOVE).length;
   const disliked = Object.values(prefs).filter(p => p === PREF.DISLIKE).length;
-  const baseConf = Number(sessionStorage.getItem('ob_conf_movies') || 0) +
-                   Number(sessionStorage.getItem('ob_conf_genres')  || 0);
-  const actorConf = Math.min(20, liked * 3 + disliked * 1);
-  const confidence = Math.min(80, 15 + baseConf + actorConf);
+  const baseConf   = Number(sessionStorage.getItem('ob_conf_movies') || 60);
+  const actorAdd   = Math.min(20, liked * 3 + disliked * 1);
+  const confidence = Math.min(85, baseConf + actorAdd);
+
+  if (!isFetching) sessionStorage.setItem('ob_conf_actors', String(confidence));
 
   const selCount   = liked;
-  const actor0     = visible[tinderIdx];
-  const actor1     = visible[tinderIdx + 1];
-  const actor2     = visible[tinderIdx + 2];
-  const tinderDone = !isFetching && tinderIdx >= visible.length;
+  const actor0     = unreviewedPeople[0];
+  const actor1     = unreviewedPeople[1];
+  const actor2     = unreviewedPeople[2];
+  const tinderDone = !isFetching && unreviewedPeople.length === 0;
   const existingIds = new Set(visible.map(p => String(p.tmdbId)));
 
   // ─────────────────────────────────────────────────────────────
@@ -540,7 +544,7 @@ export default function OnboardingActors() {
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 'var(--space-6)' }}>
           <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', letterSpacing: '0.04em' }}>
             {tinderDone ? 'All actors reviewed' : (
-              <><span style={{ color: 'var(--gold)', fontWeight: 700 }}>{tinderIdx + 1}</span> of {visible.length}</>
+              <>Unreviewed: <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{unreviewedPeople.length}</span></>
             )}
           </div>
 
@@ -570,7 +574,9 @@ export default function OnboardingActors() {
                 )}
                 {actor0 && (
                   <div style={{ position: 'absolute', inset: 0, zIndex: 3 }}>
-                    <SwipeCard key={actor0.tmdbId}
+                    <SwipeCard
+                      ref={cardRef}
+                      key={actor0.tmdbId}
                       onSwipeRight={() => tinderRight(actor0)}
                       onSwipeLeft={() => tinderLeft(actor0)}
                       rightLabel="❤ LIKE" leftLabel="PASS"
@@ -583,13 +589,13 @@ export default function OnboardingActors() {
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 28, justifyContent: 'center' }}>
                 <TinderBtn
-                  onClick={() => actor0 && tinderLeft(actor0)}
+                  onClick={() => cardRef.current?.swipeLeft()}
                   color="#94a3b8" glowColor="#94a3b844" label="Pass"
                   icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>}
                 />
                 <div style={{ fontSize: '0.6rem', color: 'var(--text-disabled)', textAlign: 'center', lineHeight: 1.5 }}>drag card<br/>or tap</div>
                 <TinderBtn
-                  onClick={() => actor0 && tinderRight(actor0)}
+                  onClick={() => cardRef.current?.swipeRight()}
                   color="#ec4899" glowColor="#ec489944" label="Like"
                   icon={<svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>}
                 />

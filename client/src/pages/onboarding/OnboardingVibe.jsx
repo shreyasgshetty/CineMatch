@@ -12,6 +12,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import OnboardingLayout from '../../components/onboarding/OnboardingLayout';
+import { resetDownstreamOnboarding } from '../../utils/onboardingHelper';
 
 // ── Vibe definitions ─────────────────────────────────────────────
 const VIBES = [
@@ -208,17 +209,25 @@ export default function OnboardingVibe() {
     () => sessionStorage.getItem('ob_vibe_id') || null
   );
 
+  const langConf = Number(sessionStorage.getItem('ob_conf_lang') || 15);
+  const vibeConf = selectedId ? 10 : 0;
+  const confidence = Math.min(30, langConf + vibeConf);
+
   const handleSelect = (id) => {
     setSelectedId(id);
     const vibe = VIBES.find(v => v.id === id);
     if (vibe) sessionStorage.setItem('ob_vibe_genres', JSON.stringify(vibe.genres));
     sessionStorage.setItem('ob_vibe_id', id);
+    sessionStorage.setItem('ob_conf_vibe', String(langConf + 10));
+    resetDownstreamOnboarding(2);
   };
 
   const handleNext = () => navigate('/onboarding/genres');
   const handleSkip = () => {
     sessionStorage.removeItem('ob_vibe_genres');
     sessionStorage.removeItem('ob_vibe_id');
+    sessionStorage.setItem('ob_conf_vibe', String(langConf));
+    resetDownstreamOnboarding(2);
     navigate('/onboarding/genres');
   };
 
@@ -234,7 +243,7 @@ export default function OnboardingVibe() {
       isLoading={false}
       canProceed={true}
       nextLabel={selectedId ? `Continue with ${selectedVibe?.label}` : 'Continue'}
-      confidence={selectedId ? 18 : 0}
+      confidence={confidence}
     >
       {/* Selected vibe summary banner */}
       {selectedVibe && (
