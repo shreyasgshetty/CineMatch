@@ -83,27 +83,21 @@ function VibeCard({ vibe, isSelected, onSelect }) {
       onClick={() => onSelect(vibe.id)}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
+      className={`cinematic-card ${isSelected ? 'cinematic-card--selected' : ''}`}
       style={{
         position: 'relative',
         border: 'none',
         padding: 0,
-        cursor: 'pointer',
-        borderRadius: 'var(--radius-xl, 20px)',
-        overflow: 'hidden',
         textAlign: 'left',
         width: '100%',
         minHeight: 120,
         background: vibe.gradient,
-        transition: 'transform 0.2s ease, box-shadow 0.2s ease',
-        transform: isSelected
-          ? 'scale(1.025)'
-          : hovered ? 'scale(1.012)' : 'scale(1)',
+        outline: 'none',
         boxShadow: isSelected
-          ? `0 0 0 2.5px ${vibe.accent}, 0 12px 40px ${vibe.glow}, 0 0 60px ${vibe.glow}`
+          ? `0 0 0 2px ${vibe.accent}, 0 12px 40px ${vibe.glow}, 0 0 60px ${vibe.glow}`
           : hovered
             ? `0 8px 30px rgba(0,0,0,0.5), 0 0 0 1px rgba(255,255,255,0.06)`
             : '0 4px 16px rgba(0,0,0,0.4)',
-        outline: 'none',
       }}
     >
       {/* Shimmer on hover/selected */}
@@ -177,23 +171,23 @@ function VibeCard({ vibe, isSelected, onSelect }) {
           </div>
 
           {/* Check badge */}
-          <div style={{
-            width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
-            background: isSelected ? vibe.accent : 'rgba(255,255,255,0.08)',
-            border: `2px solid ${isSelected ? vibe.accent : 'rgba(255,255,255,0.15)'}`,
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            transition: 'all 0.2s',
-            boxShadow: isSelected ? `0 0 14px ${vibe.accent}88` : 'none',
-          }}>
-            {isSelected ? (
+          {isSelected ? (
+            <div className="selection-check-badge" style={{ background: vibe.accent, position: 'relative', top: 0, right: 0, width: 26, height: 26 }}>
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none"
                 stroke="#fff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
                 <polyline points="20 6 9 17 4 12"/>
               </svg>
-            ) : (
+            </div>
+          ) : (
+            <div style={{
+              width: 26, height: 26, borderRadius: '50%', flexShrink: 0,
+              background: 'rgba(255,255,255,0.08)',
+              border: '2px solid rgba(255,255,255,0.15)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
               <div style={{ width: 5, height: 5, borderRadius: '50%', background: 'rgba(255,255,255,0.3)' }} />
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
     </button>

@@ -160,11 +160,9 @@ function PersonCard({ person, pref, onPref, isNew }) {
 // ── Tinder actor card content ─────────────────────────────────────
 function TinderActorCard({ person }) {
   return (
-    <div style={{
+    <div className="cinematic-card" style={{
       width: '100%', height: '100%', position: 'relative',
-      borderRadius: 'var(--radius-lg)', overflow: 'hidden',
       background: 'linear-gradient(145deg, var(--bg-elevated) 0%, var(--bg-overlay) 100%)',
-      boxShadow: '0 24px 64px rgba(0,0,0,0.75), 0 0 0 1px rgba(255,255,255,0.04)',
       display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
       gap: 18, padding: '24px 16px 20px',
     }}>

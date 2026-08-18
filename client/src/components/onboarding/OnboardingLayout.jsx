@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Spinner from '../ui/Spinner';
+import CinematicBackground from './CinematicBackground';
 
 const STEPS = [
   { num: 1, label: 'Languages' },
@@ -31,20 +32,24 @@ export default function OnboardingLayout({
     pct < 80  ? 'Your taste is taking shape' :
     'We know what you love 🎯';
 
-  return (
-    <div style={{ minHeight: '100vh', background: 'var(--bg-void)', display: 'flex', flexDirection: 'column' }}>
+  let variant = 'default';
+  if (step === 1) variant = 'languages';
+  else if (step === 2) variant = 'vibe';
+  else if (step === 3) variant = 'genres';
+  else if (step === 4) variant = 'movies';
+  else if (step === 5) variant = 'actors';
+  else if (step === 6) variant = 'directors';
 
-      {/* Ambient gradient background */}
-      <div style={{ position: 'fixed', inset: 0, pointerEvents: 'none', zIndex: 0 }}>
-        <div style={{ position: 'absolute', top: '-20%', left: '-10%', width: '50%', height: '50%', background: 'radial-gradient(ellipse, rgba(122,24,37,0.14) 0%, transparent 65%)', filter: 'blur(60px)' }} />
-        <div style={{ position: 'absolute', bottom: '-15%', right: '-10%', width: '55%', height: '55%', background: 'radial-gradient(ellipse, rgba(212,168,67,0.09) 0%, transparent 65%)', filter: 'blur(70px)' }} />
-        <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', width: '60%', height: '60%', background: 'radial-gradient(ellipse, rgba(58,68,96,0.08) 0%, transparent 65%)', filter: 'blur(80px)' }} />
-      </div>
+  return (
+    <CinematicBackground variant={variant}>
+      <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column', pointerEvents: step === 1 ? 'none' : 'auto' }}>
 
       {/* Sticky Header */}
       <header style={{
         position: 'sticky', top: 0, zIndex: 'var(--z-nav)',
-        background: 'rgba(13,15,20,0.92)', backdropFilter: 'blur(20px)',
+        pointerEvents: 'auto',
+        background: step === 1 ? 'rgba(6, 8, 12, 0.72)' : 'rgba(13,15,20,0.92)',
+        backdropFilter: 'blur(18px)',
         borderBottom: '1px solid var(--border-subtle)',
       }}>
         {/* Progress line */}
@@ -73,83 +78,54 @@ export default function OnboardingLayout({
             </div>
 
             {/* Step indicators — desktop */}
-            <div style={{ display: 'flex', gap: 'var(--space-1)', alignItems: 'center' }}>
+            <div className="ob-steps-desktop" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
               {STEPS.map((s, i) => {
-                const isDone    = s.num < step;
+                const isDone = s.num < step;
                 const isCurrent = s.num === step;
                 return (
                   <React.Fragment key={s.num}>
                     {i > 0 && (
                       <div style={{
-                        width: 16, height: 1,
+                        width: 24, height: 1,
                         background: isDone ? 'var(--gold)' : 'var(--border-default)',
+                        opacity: isDone ? 1 : 0.5,
                         transition: 'background var(--t-base)',
-                        display: 'var(--step-connector-display, flex)',
-                      }} className="step-connector" />
+                      }} className="ob-step-connector" />
                     )}
-                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 3 }}>
-                      <div style={{
-                        width: isCurrent ? 30 : 24,
-                        height: isCurrent ? 30 : 24,
-                        borderRadius: '50%',
-                        background: isDone
-                          ? 'var(--gradient-gold)'
-                          : isCurrent
-                            ? 'rgba(212,168,67,0.12)'
-                            : 'var(--bg-elevated)',
-                        border: `2px solid ${isDone || isCurrent ? 'var(--gold)' : 'var(--border-default)'}`,
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: isCurrent ? '0.78rem' : '0.68rem',
-                        fontWeight: 800,
-                        color: isDone ? '#0d0a02' : isCurrent ? 'var(--gold)' : 'var(--text-muted)',
-                        transition: 'all var(--t-base)',
-                        boxShadow: isCurrent ? '0 0 14px rgba(212,168,67,0.35)' : 'none',
-                        flexShrink: 0,
-                      }}>
-                        {isDone ? (
-                          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0d0a02" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                            <polyline points="20 6 9 17 4 12"/>
-                          </svg>
-                        ) : s.num}
-                      </div>
-                      <span style={{
-                        fontSize: '0.55rem', fontWeight: 600, letterSpacing: '0.04em',
-                        color: isCurrent ? 'var(--gold)' : 'var(--text-disabled)',
-                        textTransform: 'uppercase',
-                      }} className="step-label">
-                        {s.label}
-                      </span>
+                    <div style={{
+                      fontSize: '0.8rem',
+                      fontWeight: isCurrent ? 800 : 600,
+                      color: isDone || isCurrent ? 'var(--gold)' : 'var(--text-disabled)',
+                      fontFamily: 'var(--font-display)',
+                      letterSpacing: '0.05em',
+                      transition: 'all var(--t-base)',
+                      opacity: isDone ? 0.8 : isCurrent ? 1 : 0.6,
+                      textShadow: isCurrent ? '0 0 10px rgba(212,168,67,0.4)' : 'none',
+                    }}>
+                      0{s.num}
                     </div>
                   </React.Fragment>
                 );
               })}
             </div>
 
-            {/* Step counter — compact */}
-            <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', flexShrink: 0 }}>
-              <span style={{ color: 'var(--gold)', fontWeight: 700 }}>{step}</span>/{totalSteps}
+            {/* Step indicator — mobile */}
+            <div className="ob-steps-mobile" style={{ display: 'none', fontSize: '0.65rem', fontWeight: 800, letterSpacing: '0.15em', color: 'var(--gold)', textTransform: 'uppercase' }}>
+              STEP {step} / {totalSteps} • {STEPS.find(s => s.num === step)?.label}
             </div>
           </div>
         </div>
       </header>
 
       {/* Main Content */}
-      <main style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1 }}>
-        <div style={{ maxWidth: 900, margin: '0 auto', padding: 'var(--space-10) var(--space-6) var(--space-20)' }}>
-          <div className="animate-fade-in">
+      <main style={{ flex: 1, overflow: 'auto', position: 'relative', zIndex: 1, pointerEvents: step === 1 ? 'none' : 'auto' }}>
+        <div style={{ maxWidth: 900, margin: '0 auto', padding: step === 1 ? 'var(--space-6) var(--space-6) var(--space-12)' : 'var(--space-10) var(--space-6) var(--space-20)', pointerEvents: step === 1 ? 'none' : 'auto' }}>
+          <div className="animate-fade-in" style={{ pointerEvents: step === 1 ? 'none' : 'auto' }}>
             {/* Step badge */}
             <div style={{
-              display: 'inline-flex', alignItems: 'center', gap: 8,
-              padding: '5px 14px',
-              background: 'rgba(212,168,67,0.07)',
-              border: '1px solid rgba(212,168,67,0.18)',
-              borderRadius: 'var(--radius-full)',
-              marginBottom: 'var(--space-5)',
+              fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.15em', color: 'var(--gold)', marginBottom: 'var(--space-3)', textTransform: 'uppercase'
             }}>
-              <span style={{ width: 5, height: 5, borderRadius: '50%', background: 'var(--gold)', display: 'inline-block', boxShadow: '0 0 5px var(--gold)' }} />
-              <span style={{ fontSize: '0.67rem', fontWeight: 700, letterSpacing: '0.1em', textTransform: 'uppercase', color: 'var(--gold)' }}>
-                Step {step} of {totalSteps}
-              </span>
+              STEP 0{step} / 0{totalSteps}
             </div>
 
             <h1 style={{ marginBottom: 'var(--space-3)', fontSize: 'clamp(1.6rem, 4vw, 2.4rem)', fontFamily: 'var(--font-serif)', fontStyle: 'italic' }}>{title}</h1>
@@ -167,7 +143,9 @@ export default function OnboardingLayout({
       {/* Sticky Footer Actions */}
       <footer style={{
         position: 'sticky', bottom: 0, zIndex: 'var(--z-nav)',
-        background: 'rgba(13,15,20,0.97)', backdropFilter: 'blur(20px)',
+        pointerEvents: 'auto',
+        background: step === 1 ? 'rgba(6, 8, 12, 0.78)' : 'rgba(13,15,20,0.97)',
+        backdropFilter: 'blur(18px)',
         borderTop: '1px solid var(--border-subtle)',
         padding: 'var(--space-3) 0',
       }}>
@@ -194,11 +172,11 @@ export default function OnboardingLayout({
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{
                     display: 'flex', justifyContent: 'space-between',
-                    fontSize: '0.6rem', color: 'var(--text-muted)',
-                    marginBottom: 4, letterSpacing: '0.03em',
+                    fontSize: '0.65rem', color: 'var(--text-muted)',
+                    marginBottom: 6, letterSpacing: '0.08em', textTransform: 'uppercase'
                   }}>
-                    <span style={{ fontWeight: 600, color: 'rgba(212,168,67,0.75)' }}>Taste accuracy</span>
-                    <span style={{ fontWeight: 800, color: pct > 60 ? 'var(--gold)' : 'rgba(212,168,67,0.7)' }}>{pct}%</span>
+                    <span style={{ fontWeight: 800, color: 'var(--text-secondary)' }}>YOUR TASTE PROFILE</span>
+                    <span style={{ fontWeight: 800, color: pct > 60 ? 'var(--gold)' : 'var(--text-secondary)' }}>{pct}%</span>
                   </div>
 
                   {/* Progress track */}
@@ -342,11 +320,11 @@ export default function OnboardingLayout({
 
       <style>{`
         @media (max-width: 640px) {
-          .step-label { display: none !important; }
-          .step-connector { width: 8px !important; }
+          .ob-steps-desktop { display: none !important; }
+          .ob-steps-mobile { display: block !important; }
         }
         @media (max-width: 440px) {
-          .step-connector { display: none !important; }
+          .ob-step-connector { display: none !important; }
         }
         @keyframes slideUp {
           from { opacity: 0; transform: translateY(28px) scale(0.97); }
@@ -354,5 +332,6 @@ export default function OnboardingLayout({
         }
       `}</style>
     </div>
+    </CinematicBackground>
   );
 }

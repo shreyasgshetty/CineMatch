@@ -260,21 +260,35 @@ router.post('/directors', auth, async (req, res, next) => {
 });
 
 // ── GET: Language Preview Posters ─────────────────────────────
-// Returns top 4 poster paths per language for the collage cards in Step 1
+// Returns top poster paths & metadata per language for the cinematic poster wall in Step 1
 router.get('/language-previews', auth, async (req, res, next) => {
   try {
+    const limit = Math.min(40, Math.max(4, Number(req.query.limit) || 24));
     const LANGS = ['kn','te','ta','ml','hi','bn','mr','pa','en','ko','ja','zh','es','fr'];
     const previews = {};
+    const posters = {};
+
     await Promise.all(LANGS.map(async (lang) => {
       const movies = await Media
         .find({ originalLanguage: lang, posterPath: { $ne: '' } })
         .sort({ popularity: -1 })
-        .limit(4)
-        .select('posterPath title')
+        .limit(limit)
+        .select('posterPath title releaseYear rating originalLanguage industry')
         .lean();
+
       previews[lang] = movies.map(m => m.posterPath);
+      posters[lang] = movies.map(m => ({
+        id: m._id,
+        posterPath: m.posterPath,
+        title: m.title,
+        releaseYear: m.releaseYear,
+        rating: m.rating,
+        originalLanguage: m.originalLanguage,
+        industry: m.industry || LANGUAGE_TO_INDUSTRY[m.originalLanguage] || '',
+      }));
     }));
-    res.json({ previews });
+
+    res.json({ previews, posters });
   } catch (error) { next(error); }
 });
 

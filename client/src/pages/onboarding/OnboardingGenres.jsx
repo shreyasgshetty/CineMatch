@@ -29,7 +29,6 @@ const GENRE_GRADIENT = {
   'TV Movie':   'linear-gradient(145deg,#060e1e 0%,#102060 50%,#183090 100%)',
 };
 
-// Short icon labels for each genre
 const GENRE_ICON = {
   Action: 'ACT', Adventure: 'ADV', Animation: 'ANI', Comedy: 'COM',
   Crime: 'CRM', Documentary: 'DOC', Drama: 'DRM', Family: 'FAM',
@@ -68,68 +67,49 @@ function PosterCollage({ posters, gradient }) {
 }
 
 function GenreCard({ genre, isSelected, onToggle, posters }) {
-  const [hovered, setHovered] = useState(false);
-
   return (
     <button
       id={`genre-${genre.id}`}
       type="button"
       onClick={() => onToggle(genre.name)}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => setHovered(false)}
+      className={`cinematic-card ${isSelected ? 'cinematic-card--selected' : ''}`}
       style={{
-        position: 'relative', aspectRatio: '2/3', minHeight: 130, width: '100%',
-        border: 'none', padding: 0, cursor: 'pointer',
-        borderRadius: 'var(--radius-lg)', overflow: 'hidden', background: 'none',
-        transition: 'transform var(--t-base), box-shadow var(--t-base)',
-        transform: hovered && !isSelected ? 'translateY(-3px)' : isSelected ? 'translateY(-2px)' : 'none',
-        outline: isSelected ? '2.5px solid var(--gold)' : '2.5px solid transparent',
-        boxShadow: isSelected
-          ? '0 0 0 2.5px var(--gold), 0 8px 28px rgba(212,168,67,0.30)'
-          : hovered ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
+        position: 'relative', aspectRatio: '2/3', minHeight: 140, width: '100%',
+        border: 'none', padding: 0, cursor: 'pointer', outline: 'none', textAlign: 'left',
       }}
     >
       <PosterCollage posters={posters} gradient={GENRE_GRADIENT[genre.name] || '#1a1a2e'} />
 
-      {/* Base dark overlay */}
-      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(0,0,0,0.94) 38%, rgba(0,0,0,0.10) 100%)' }} />
+      {/* Gradient Overlay */}
+      <div style={{ position: 'absolute', inset: 0, background: 'linear-gradient(to top, rgba(8,9,12,0.95) 40%, rgba(8,9,12,0.15) 100%)' }} />
 
-      {/* Selected tint */}
+      {/* Selected Overlay */}
       {isSelected && (
-        <div style={{ position: 'absolute', inset: 0, background: 'rgba(212,168,67,0.10)' }} />
+        <div style={{ position: 'absolute', inset: 0, background: 'rgba(212, 168, 67, 0.12)' }} />
       )}
 
-      {/* Check badge */}
+      {/* Checkmark Badge */}
       {isSelected && (
-        <div style={{
-          position: 'absolute', top: 8, right: 8,
-          width: 22, height: 22, borderRadius: '50%',
-          background: 'var(--gradient-gold)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 0 10px rgba(212,168,67,0.6)',
-        }}>
-          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0d0a02" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+        <div className="selection-check-badge" style={{ width: 22, height: 22, top: 6, right: 6 }}>
+          <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#0d0a02" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12"/>
           </svg>
         </div>
       )}
 
-      {/* Genre text */}
-      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '8px 10px' }}>
-        {/* Short identifier tag */}
+      {/* Genre Text */}
+      <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, padding: '10px 12px' }}>
         <div style={{
-          fontSize: '0.52rem', fontWeight: 900, letterSpacing: '0.1em',
-          color: isSelected ? 'var(--gold)' : 'rgba(255,255,255,0.45)',
-          textTransform: 'uppercase', marginBottom: 3,
-          transition: 'color var(--t-fast)',
+          fontSize: '0.55rem', fontWeight: 900, letterSpacing: '0.12em',
+          color: isSelected ? 'var(--gold)' : 'rgba(255,255,255,0.5)',
+          textTransform: 'uppercase', marginBottom: 2,
         }}>
           {GENRE_ICON[genre.name] || '---'}
         </div>
         <div style={{
-          fontWeight: 800, fontSize: '0.78rem', lineHeight: 1.2,
+          fontWeight: 800, fontSize: '0.85rem', lineHeight: 1.2,
           color: isSelected ? 'var(--gold)' : '#fff',
-          textShadow: '0 1px 4px rgba(0,0,0,0.9)',
-          transition: 'color var(--t-fast)',
+          textShadow: '0 2px 6px rgba(0,0,0,0.9)',
         }}>
           {genre.name}
         </div>
@@ -207,28 +187,32 @@ export default function OnboardingGenres() {
         </div>
       )}
 
-      {selCount > 0 && (
+      {selCount > 0 ? (
         <div style={{
-          display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center',
-          marginBottom: 'var(--space-5)',
-          padding: 'var(--space-3) var(--space-4)',
-          background: 'rgba(212,168,67,0.05)',
-          border: '1px solid rgba(212,168,67,0.15)',
+          display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center',
+          marginBottom: 'var(--space-6)',
+          padding: '12px 18px',
+          background: 'rgba(212,168,67,0.06)',
+          border: '1px solid rgba(212,168,67,0.2)',
           borderRadius: 'var(--radius-md)',
         }}>
-          <span style={{ fontSize: '0.73rem', fontWeight: 700, color: 'var(--gold)', marginRight: 4 }}>{selCount} selected:</span>
-          {selected.map(name => <span key={name} className="chip">{name}</span>)}
+          <span style={{ fontSize: '0.75rem', fontWeight: 800, color: 'var(--gold)', letterSpacing: '0.04em', marginRight: 4 }}>
+            SELECTED GENRES ({selCount}):
+          </span>
+          {selected.map(name => (
+            <span key={name} className="chip" style={{ background: 'rgba(212,168,67,0.18)', borderColor: 'var(--gold)', color: '#fff', fontSize: '0.78rem' }}>
+              {name}
+            </span>
+          ))}
         </div>
-      )}
-
-      {selCount === 0 && (
-        <div className="info-banner" style={{ marginBottom: 'var(--space-5)' }}>
+      ) : (
+        <div className="info-banner" style={{ marginBottom: 'var(--space-6)' }}>
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-          Tap any genre to select it — you can pick as many as you like
+          Tap any genre card below to select or unselect — pick as many as you love
         </div>
       )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(110px, 1fr))', gap: 'var(--space-3)' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(130px, 1fr))', gap: 14 }}>
         {GENRES.map(genre => (
           <GenreCard
             key={genre.id}

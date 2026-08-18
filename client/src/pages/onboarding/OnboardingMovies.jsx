@@ -81,15 +81,10 @@ function MovieCard({ item, state, onToggleSeen, onRate, isNew }) {
 
   return (
     <div
+      className={`cinematic-card ${isSeen ? 'cinematic-card--selected' : ''}`}
       style={{
-        position: 'relative', borderRadius: 'var(--radius-lg)', overflow: 'hidden',
-        aspectRatio: '2/3', background: 'var(--bg-card)', cursor: 'pointer',
-        transition: 'transform var(--t-base), box-shadow var(--t-base)',
-        transform: hovered ? 'translateY(-3px) scale(1.02)' : 'none',
-        boxShadow: isSeen
-          ? '0 0 0 2px var(--gold), 0 8px 24px rgba(212,168,67,0.25)'
-          : hovered ? 'var(--shadow-lg)' : 'var(--shadow-sm)',
-        outline: isSeen ? '2px solid var(--gold)' : 'none',
+        position: 'relative',
+        aspectRatio: '2/3', background: 'var(--bg-card)',
         animation: isNew ? 'slideUp 0.35s ease both' : 'none',
       }}
       onClick={() => onToggleSeen(item._id)}
@@ -151,10 +146,7 @@ function MovieCard({ item, state, onToggleSeen, onRate, isNew }) {
         </div>
       )}
       {isSeen && (
-        <div style={{ position: 'absolute', top: 8, right: 8, width: 22, height: 22,
-          borderRadius: '50%', background: 'var(--gradient-gold)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center',
-          boxShadow: '0 0 10px rgba(212,168,67,0.6)' }}>
+        <div className="selection-check-badge" style={{ width: 22, height: 22, top: 8, right: 8 }}>
           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#0d0a02"
             strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
             <polyline points="20 6 9 17 4 12"/>
@@ -168,11 +160,9 @@ function MovieCard({ item, state, onToggleSeen, onRate, isNew }) {
 // ── Tinder full-poster card ───────────────────────────────────────
 function TinderMovieCard({ movie }) {
   return (
-    <div style={{
+    <div className="cinematic-card" style={{
       width: '100%', height: '100%', position: 'relative',
-      borderRadius: 'var(--radius-lg)', overflow: 'hidden',
       background: 'var(--bg-card)',
-      boxShadow: '0 24px 64px rgba(0,0,0,0.8), 0 0 0 1px rgba(255,255,255,0.04)',
     }}>
       {movie.posterPath ? (
         <img src={`${TMDB_IMG}${movie.posterPath}`} alt={movie.title} draggable={false}
