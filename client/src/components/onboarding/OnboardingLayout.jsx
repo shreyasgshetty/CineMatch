@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Spinner from '../ui/Spinner';
 import CinematicBackground from './CinematicBackground';
+import CalculationInfoModal from './CalculationInfoModal';
 
 const STEPS = [
   { num: 1, label: 'Languages' },
@@ -230,50 +231,24 @@ export default function OnboardingLayout({
                 </div>
                 <button
                   type="button"
-                  onClick={() => setShowTasteInfo(!showTasteInfo)}
+                  onClick={() => setShowTasteInfo(true)}
                   style={{
                     background: 'none', border: 'none', color: 'var(--gold)',
                     fontSize: '0.62rem', fontWeight: 700, cursor: 'pointer',
                     textDecoration: 'underline', padding: '0 2px', flexShrink: 0,
                   }}
                 >
-                  {showTasteInfo ? 'Hide details' : 'How is this calculated?'}
+                  How is this calculated?
                 </button>
               </div>
-
-              {/* Expandable Breakdown Card */}
-              {showTasteInfo && (
-                <div style={{
-                  marginTop: 6, padding: '10px 14px',
-                  background: 'var(--bg-elevated)', border: '1px solid var(--border-subtle)',
-                  borderRadius: 'var(--radius-md)', fontSize: '0.68rem', color: 'var(--text-secondary)',
-                  lineHeight: 1.6, boxShadow: 'var(--shadow-md)',
-                }}>
-                  <div style={{ fontWeight: 800, color: 'var(--text-primary)', marginBottom: 6, display: 'flex', alignItems: 'center', gap: 6 }}>
-                    <span>🎯 How Taste Accuracy Accumulates</span>
-                  </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: 8 }}>
-                    <div style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '0.62rem' }}>🌐 Languages & Vibe (0–30%)</div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>Filters regional base & cinematic mood</div>
-                    </div>
-                    <div style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '0.62rem' }}>🎭 Genres (30–45%)</div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>Maps storytelling & theme preferences</div>
-                    </div>
-                    <div style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '0.62rem' }}>🎬 Films & Ratings (45–70%)</div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>Teaches specific film likes & star ratings</div>
-                    </div>
-                    <div style={{ padding: '6px 8px', background: 'rgba(255,255,255,0.03)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.05)' }}>
-                      <div style={{ color: 'var(--gold)', fontWeight: 700, fontSize: '0.62rem' }}>👥 Actors & Directors (70–100%)</div>
-                      <div style={{ color: 'var(--text-muted)', fontSize: '0.6rem' }}>Pins down star & auteur filmmaker style</div>
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           )}
+
+          {/* ── Cinematic Calculation Explanation Modal ── */}
+          <CalculationInfoModal
+            isOpen={showTasteInfo}
+            onClose={() => setShowTasteInfo(false)}
+          />
 
           {/* ── Back / Next row ───────────────────────────────── */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)', justifyContent: 'space-between' }}>
