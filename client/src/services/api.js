@@ -97,6 +97,14 @@ export const interactionApi = {
     api.get(`/interactions/${mediaId}`),
 };
 
+// ── Watch Planner Endpoints ──────────────────────────────────
+export const watchPlannerApi = {
+  get:    ()           => api.get('/watch-schedule'),
+  create: (data)       => api.post('/watch-schedule', data),
+  update: (id, data)   => api.put(`/watch-schedule/${id}`, data),
+  remove: (id)         => api.delete(`/watch-schedule/${id}`),
+};
+
 // ── User Endpoints ───────────────────────────────────────────
 export const userApi = {
   getProfile: () => api.get('/users/profile'),

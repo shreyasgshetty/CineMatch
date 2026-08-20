@@ -95,6 +95,15 @@ const MediaSchema = new mongoose.Schema({
     type: Number,
     default: 0,
   },
+  // ── CineMatch Community Rating (separate from TMDB) ──────────
+  cmRating: {
+    type: Number,  // CineMatch community average (0-5 scale, from user ratings)
+    default: 0,
+  },
+  cmVoteCount: {
+    type: Number,  // Number of CineMatch user ratings
+    default: 0,
+  },
   popularity: {
     type: Number,  // TMDB popularity score
     default: 0,

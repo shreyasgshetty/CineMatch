@@ -28,6 +28,7 @@ const recommendationRoutes = require('./routes/recommendations');
 const interactionRoutes    = require('./routes/interactions');
 const userRoutes           = require('./routes/users');
 const referenceRoutes      = require('./routes/reference');
+const watchScheduleRoutes  = require('./routes/watchSchedule');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -118,6 +119,7 @@ app.use('/api/onboarding',      apiLimiter, onboardingRoutes);
 app.use('/api/recommendations', apiLimiter, recommendationRoutes);
 app.use('/api/interactions',    apiLimiter, interactionRoutes);
 app.use('/api/users',           apiLimiter, userRoutes);
+app.use('/api/watch-schedule',  apiLimiter, watchScheduleRoutes);
 app.use('/api',                 apiLimiter, referenceRoutes);
 
 // ── 404 Handler ───────────────────────────────────────────────

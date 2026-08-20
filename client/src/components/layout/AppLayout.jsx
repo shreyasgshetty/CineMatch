@@ -41,6 +41,7 @@ function Navbar() {
     { path: '/home', label: 'Home' },
     { path: '/recommendations', label: 'For You' },
     { path: '/search', label: 'Browse' },
+    { path: '/planner', label: 'Planner' },
   ];
 
   return (
